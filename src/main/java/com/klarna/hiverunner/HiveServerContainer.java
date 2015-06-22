@@ -16,9 +16,10 @@
 
 package com.klarna.hiverunner;
 
-import com.klarna.reflection.ReflectionUtils;
+import java.util.List;
+import java.util.Map;
+
 import org.apache.hadoop.hive.conf.HiveConf;
-import org.apache.hadoop.hive.metastore.HiveMetaStore;
 import org.apache.hadoop.hive.metastore.api.MetaException;
 import org.apache.hadoop.hive.ql.parse.VariableSubstitution;
 import org.apache.hadoop.hive.service.HiveServer;
@@ -26,9 +27,6 @@ import org.apache.thrift.TException;
 import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.List;
-import java.util.Map;
 
 /**
  * HiveServer wrapper
@@ -124,7 +122,8 @@ import java.util.Map;
             client = null;
 
             // Force reset of static field 'createDefaultDB' since Hive will not recreate the meta store otherwise.
-            ReflectionUtils.setStaticField(HiveMetaStore.HMSHandler.class, "createDefaultDB", false);
+            // DISABLED becaused field doesn't exist in hive-0.14+
+            //ReflectionUtils.setStaticField(HiveMetaStore.HMSHandler.class, "createDefaultDB", false);
             LOGGER.info("Tore down HiveServer instance");
         }
     }

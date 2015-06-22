@@ -16,19 +16,37 @@
 
 package com.klarna.hiverunner;
 
-import com.klarna.reflection.ReflectionUtils;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hive.conf.HiveConf;
-import org.apache.hadoop.hive.shims.Hadoop20SShims;
-import org.apache.hadoop.hive.shims.ShimLoader;
-import org.hsqldb.jdbc.JDBCDriver;
-import org.junit.rules.TemporaryFolder;
+import static org.apache.hadoop.hive.conf.HiveConf.ConfVars.HADOOPBIN;
+import static org.apache.hadoop.hive.conf.HiveConf.ConfVars.HIVECONVERTJOIN;
+import static org.apache.hadoop.hive.conf.HiveConf.ConfVars.HIVEHISTORYFILELOC;
+import static org.apache.hadoop.hive.conf.HiveConf.ConfVars.HIVEMETADATAONLYQUERIES;
+import static org.apache.hadoop.hive.conf.HiveConf.ConfVars.HIVEOPTINDEXFILTER;
+import static org.apache.hadoop.hive.conf.HiveConf.ConfVars.HIVESKEWJOIN;
+import static org.apache.hadoop.hive.conf.HiveConf.ConfVars.HIVESTATSAUTOGATHER;
+import static org.apache.hadoop.hive.conf.HiveConf.ConfVars.HIVE_INFER_BUCKET_SORT;
+import static org.apache.hadoop.hive.conf.HiveConf.ConfVars.HIVE_SUPPORT_CONCURRENCY;
+import static org.apache.hadoop.hive.conf.HiveConf.ConfVars.HIVE_WAREHOUSE_SUBDIR_INHERIT_PERMS;
+import static org.apache.hadoop.hive.conf.HiveConf.ConfVars.LOCALSCRATCHDIR;
+import static org.apache.hadoop.hive.conf.HiveConf.ConfVars.METASTORECONNECTURLKEY;
+import static org.apache.hadoop.hive.conf.HiveConf.ConfVars.METASTOREWAREHOUSE;
+import static org.apache.hadoop.hive.conf.HiveConf.ConfVars.METASTORE_VALIDATE_COLUMNS;
+import static org.apache.hadoop.hive.conf.HiveConf.ConfVars.METASTORE_VALIDATE_CONSTRAINTS;
+import static org.apache.hadoop.hive.conf.HiveConf.ConfVars.METASTORE_VALIDATE_TABLES;
+import static org.apache.hadoop.hive.conf.HiveConf.ConfVars.SCRATCHDIR;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.UUID;
 
-import static org.apache.hadoop.hive.conf.HiveConf.ConfVars.*;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
+import org.apache.hadoop.hive.shims.Hadoop20SShims;
+import org.apache.hadoop.hive.shims.ShimLoader;
+import org.hsqldb.jdbc.JDBCDriver;
+import org.junit.rules.TemporaryFolder;
+
+import com.klarna.reflection.ReflectionUtils;
 
 /**
  * Configuration for running the HiveServer within this JVM with zero external dependencies.
@@ -63,12 +81,14 @@ class StandaloneHiveServerContext implements HiveServerContext {
 
         hiveConf.setVar(HADOOPBIN, "NO_BIN!");
 
+        // Set to true to resolve a NPE when trying to resolve the path to reduce.xml for UDF count
+        hiveConf.setBoolVar(HiveConf.ConfVars.HIVE_RPC_QUERY_PLAN, true);
+
         try {
             Class.forName(JDBCDriver.class.getName());
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
-
 
         configureJavaSecurityRealm(hiveConf);
 
@@ -132,9 +152,10 @@ class StandaloneHiveServerContext implements HiveServerContext {
         conf.setVar(METASTORECONNECTURLKEY, metaStorageUrl + ";create=true");
 
         createAndSetFolderProperty(METASTOREWAREHOUSE, "warehouse", conf, basedir);
-        createAndSetFolderProperty(SCRATCHDIR, "scratchdir", conf, basedir);
+        //don't create 'scratchdir' cause it needs special permissions, Hive will create it correctly
+        setFolderProperty(SCRATCHDIR, "scratchdir", conf, basedir);
         createAndSetFolderProperty(LOCALSCRATCHDIR, "localscratchdir", conf, basedir);
-        createAndSetFolderProperty(METASTOREDIRECTORY, "metastore", conf, basedir);
+        createAndSetFolderProperty("hive.metastore.metadb.dir", "metastore", conf, basedir);
         createAndSetFolderProperty(HIVEHISTORYFILELOC, "tmp", conf, basedir);
 
         conf.setBoolVar(HIVE_WAREHOUSE_SUBDIR_INHERIT_PERMS, true);
@@ -193,6 +214,10 @@ class StandaloneHiveServerContext implements HiveServerContext {
 
     protected final void createAndSetFolderProperty(String key, String folder, HiveConf conf, TemporaryFolder basedir) {
         conf.set(key, newFolder(basedir, folder).getAbsolutePath());
+    }
+
+    private void setFolderProperty(ConfVars var, String folder, HiveConf conf, TemporaryFolder basedir) {
+      conf.setVar(var, new File(basedir.getRoot(), folder).getAbsolutePath());
     }
 
 

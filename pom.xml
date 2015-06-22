@@ -22,13 +22,15 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- See: https://github.com/HotelsDotCom/hive-release/tree/hive-0.14.0.2.2.4.2-2-hiverunner -->
+        <hive.version>0.14.0.2.2.4.2-2-hiverunner-0.1</hive.version>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>org.apache.hive</groupId>
             <artifactId>hive-serde</artifactId>
-            <version>0.12.0</version>
+            <version>${hive.version}</version>
         </dependency>
 
         <dependency>
@@ -95,8 +97,24 @@
         <dependency>
             <groupId>org.apache.hive</groupId>
             <artifactId>hive-contrib</artifactId>
-            <version>0.12.0</version>
+            <version>${hive.version}</version>
             <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-mapreduce-client-core</artifactId>
+            <version>2.6.0.2.2.4.2-2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-mapreduce-client-common</artifactId>
+            <version>2.6.0.2.2.4.2-2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-common</artifactId>
+            <version>2.6.0.2.2.4.2-2</version>
         </dependency>
 
         <dependency>
