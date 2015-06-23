@@ -16,10 +16,13 @@
 
 package com.klarna.hiverunner.builder;
 
-import com.google.common.base.Preconditions;
-import com.klarna.hiverunner.HiveServerContainer;
-import com.klarna.hiverunner.HiveServerContext;
-import com.klarna.hiverunner.HiveShell;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.parse.VariableSubstitution;
@@ -28,12 +31,10 @@ import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import com.google.common.base.Preconditions;
+import com.klarna.hiverunner.HiveServerContainer;
+import com.klarna.hiverunner.HiveServerContext;
+import com.klarna.hiverunner.HiveShell;
 
 
 /**
