@@ -3,7 +3,7 @@
 
     <groupId>com.klarna</groupId>
     <artifactId>hiverunner</artifactId>
-    <version>0.8.1-SNAPSHOT</version>
+    <version>0.8.1-edw-1.10.0-cdh4.4.0-2-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <licenses>
@@ -28,9 +28,15 @@
         <dependency>
             <groupId>org.apache.hive</groupId>
             <artifactId>hive-serde</artifactId>
-            <version>0.12.0</version>
+            <version>0.10.0-cdh4.4.0</version>
         </dependency>
 
+       <dependency>
+            <groupId>org.apache.hive</groupId>
+            <artifactId>hive-builtins</artifactId>
+            <version>0.10.0-cdh4.4.0</version>
+        </dependency>
+        
         <dependency>
             <groupId>org.hsqldb</groupId>
             <artifactId>hsqldb</artifactId>
@@ -40,7 +46,7 @@
         <dependency>
             <groupId>org.apache.hive</groupId>
             <artifactId>hive-service</artifactId>
-            <version>0.12.0</version>
+            <version>0.10.0-cdh4.4.0</version>
             <exclusions>
                 <exclusion>
                     <artifactId>derby</artifactId>
@@ -85,17 +91,22 @@
             <version>3.2.11</version>
         </dependency>
 
-
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-common</artifactId>
+            <version>2.0.0-cdh4.4.0</version>
+        </dependency>
+        
         <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-core</artifactId>
-            <version>1.2.1</version>
+            <version>2.0.0-mr1-cdh4.4.0</version>
         </dependency>
 
         <dependency>
             <groupId>org.apache.hive</groupId>
             <artifactId>hive-contrib</artifactId>
-            <version>0.12.0</version>
+            <version>0.10.0-cdh4.4.0</version>
             <scope>test</scope>
         </dependency>
 

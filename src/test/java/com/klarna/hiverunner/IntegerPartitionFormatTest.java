@@ -21,6 +21,7 @@ import com.klarna.hiverunner.annotations.HiveSQL;
 import com.klarna.hiverunner.annotations.HiveSetupScript;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -62,6 +63,7 @@ public class IntegerPartitionFormatTest {
     }
 
 
+    @Ignore("This branch deals with Hive 0.10 only")
     @Test
     public void testPrefixedPartitionInteger() {
         // In 0.11 version of Hive month = 07 would resolve to true
@@ -69,6 +71,7 @@ public class IntegerPartitionFormatTest {
     }
 
 
+    @Ignore("This branch deals with Hive 0.10 only")
     @Test
     public void testNonPrefixedPartitionInteger() {
         // In 0.11 version of Hive month = 07 would resolve to true
