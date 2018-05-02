@@ -75,6 +75,11 @@ public class HiveShellBuilder {
     public void setCommandShellEmulation(CommandShellEmulation commandShellEmulation) {
       this.commandShellEmulation = commandShellEmulation;
     }
+    
+    public HiveShellContainer buildShell(List<String> scriptsUnderTest) {
+      return new HiveShellTearable(hiveServerContainer, props, setupScripts, resources, scriptsUnderTest,
+          commandShellEmulation);
+    }
 
     public HiveShellContainer buildShell() {
         return new HiveShellTearable(hiveServerContainer, props, setupScripts, resources, scriptsUnderTest, commandShellEmulation);

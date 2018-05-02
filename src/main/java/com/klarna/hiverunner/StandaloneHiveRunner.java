@@ -61,15 +61,15 @@ import static org.reflections.ReflectionUtils.withType;
  */
 public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(StandaloneHiveRunner.class);
+    protected static final Logger LOGGER = LoggerFactory.getLogger(StandaloneHiveRunner.class);
 
-    private HiveShellContainer container;
+    protected HiveShellContainer container;
 
     /**
      * We need to init config because we're going to pass
      * it around before it is actually fully loaded from the testcase.
      */
-    private HiveRunnerConfig config = new HiveRunnerConfig();
+    protected HiveRunnerConfig config = new HiveRunnerConfig();
 
     public StandaloneHiveRunner(Class<?> clazz) throws InitializationError {
         super(clazz);
@@ -165,7 +165,7 @@ public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
     /**
      * Drives the unit test.
      */
-    private void evaluateStatement(Object target, TemporaryFolder temporaryFolder, Statement base) throws Throwable {
+    protected void evaluateStatement(Object target, TemporaryFolder temporaryFolder, Statement base) throws Throwable {
         container = null;
         FileUtil.setPermission(temporaryFolder.getRoot(), FsPermission.getDirDefault());
         try {
@@ -177,7 +177,7 @@ public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
         }
     }
 
-    private void tearDown() {
+    protected void tearDown() {
         if (container != null) {
             LOGGER.info("Tearing down {}", getName());
             try {
@@ -191,7 +191,7 @@ public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
     /**
      * Traverses the test case annotations. Will inject a HiveShell in the test case that envelopes the HiveServer.
      */
-    private HiveShellContainer createHiveServerContainer(final Object testCase, TemporaryFolder baseDir)
+    protected HiveShellContainer createHiveServerContainer(final Object testCase, TemporaryFolder baseDir)
             throws IOException {
 
         HiveServerContext context = new StandaloneHiveServerContext(baseDir, config);
@@ -224,7 +224,7 @@ public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
         return shell;
     }
 
-    private HiveShellField loadScriptUnderTest(final Object testCaseInstance, HiveShellBuilder hiveShellBuilder) {
+    protected HiveShellField loadScriptUnderTest(final Object testCaseInstance, HiveShellBuilder hiveShellBuilder) {
         try {
             Set<Field> fields = ReflectionUtils.getAllFields(
                     testCaseInstance.getClass(), withAnnotation(HiveSQL.class));
@@ -263,12 +263,12 @@ public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
         }
     }
 
-    private void assertFileExists(Path file) {
+    protected void assertFileExists(Path file) {
         Preconditions.checkState(Files.exists(file), "File " + file + " does not exist");
     }
 
 
-    private void loadAnnotatedSetupScripts(Object testCase, HiveShellBuilder workFlowBuilder) {
+    protected void loadAnnotatedSetupScripts(Object testCase, HiveShellBuilder workFlowBuilder) {
         Set<Field> setupScriptFields = ReflectionUtils.getAllFields(testCase.getClass(),
                 withAnnotation(HiveSetupScript.class));
 
@@ -287,7 +287,7 @@ public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
         }
     }
 
-    private static String readAll(Path path) {
+    protected static String readAll(Path path) {
         try {
             return new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
         } catch (IOException e) {
@@ -295,7 +295,7 @@ public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
         }
     }
 
-    private void loadAnnotatedResources(Object testCase, HiveShellBuilder workFlowBuilder) throws IOException {
+    protected void loadAnnotatedResources(Object testCase, HiveShellBuilder workFlowBuilder) throws IOException {
         Set<Field> fields = ReflectionUtils.getAllFields(testCase.getClass(), withAnnotation(HiveResource.class));
 
         for (Field resourceField : fields) {
@@ -317,7 +317,7 @@ public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
         }
     }
 
-    private Path getMandatoryPathFromField(Object testCase, Field resourceField) {
+    protected Path getMandatoryPathFromField(Object testCase, Field resourceField) {
         Path path;
         if (ReflectionUtils.isOfType(resourceField, File.class)) {
             File dataFile = ReflectionUtils.getFieldValue(testCase, resourceField.getName(), File.class);
@@ -333,7 +333,7 @@ public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
         return path;
     }
 
-    private void loadAnnotatedProperties(Object testCase, HiveShellBuilder workFlowBuilder) {
+    protected void loadAnnotatedProperties(Object testCase, HiveShellBuilder workFlowBuilder) {
         for (Field hivePropertyField : ReflectionUtils.getAllFields(testCase.getClass(),
                 withAnnotation(HiveProperties.class))) {
             Preconditions.checkState(ReflectionUtils.isOfType(hivePropertyField, Map.class),
@@ -343,7 +343,7 @@ public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
         }
     }
 
-    private TestRule getHiveRunnerConfigRule(final Object target) {
+    protected TestRule getHiveRunnerConfigRule(final Object target) {
         return new TestRule() {
             @Override
             public Statement apply(Statement base, Description description) {
@@ -369,11 +369,11 @@ public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
         };
     }
 
-    private void clearLogContext() {
+    protected void clearLogContext() {
         MDC.clear();
     }
 
-    private void setLogContext(FrameworkMethod method) {
+    protected void setLogContext(FrameworkMethod method) {
         MDC.put("testClassShort", getTestClass().getJavaClass().getSimpleName());
         MDC.put("testClass", getTestClass().getJavaClass().getName());
         MDC.put("testMethod", method.getName());
@@ -383,7 +383,7 @@ public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
      * Used as a handle for the HiveShell field in the test case so that we may set it once the
      * HiveShell has been instantiated.
      */
-    interface HiveShellField {
+    protected interface HiveShellField {
         void setShell(HiveShell shell);
 
         boolean isAutoStart();
