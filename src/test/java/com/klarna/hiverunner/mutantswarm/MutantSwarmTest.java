@@ -4,9 +4,11 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -38,19 +40,24 @@ public class MutantSwarmTest {
   // .commit();
   // }
 
+  @Before
+  public void before(){
+    System.out.println("test before()");
+  }
+  
   @After
-  public void tearDown() {
-    // System.out.println("TEARING DOWN");
-    hiveShell.execute("DROP TABLE bar");
-    hiveShell.execute("DROP TABLE foo");
+  public void after(){
+    System.out.println("test after()");
   }
 
   @Test
   public void test() {
-    System.out.println("RUNNING TEST 1");
+    System.out.println("RUNNING TEST");
     List<String> result = hiveShell.executeQuery("SELECT * FROM bar");
-    assertThat(result.size(), is(1));
-    assertThat(result.get(0), is("GREEN"));
+//    assertThat(result.size(), is(1));
+//    assertThat(result.get(0), is("GREEN"));
+    System.out.println("Result: " + result);
+    assertThat(result, is(Arrays.asList("GREEN")));
     // System.out.println("TEST PASSED");
   }
 

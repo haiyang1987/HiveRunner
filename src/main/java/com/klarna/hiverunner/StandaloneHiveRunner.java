@@ -16,13 +16,22 @@
 
 package com.klarna.hiverunner;
 
-import com.google.common.base.Preconditions;
-import com.google.common.base.Predicates;
-import com.google.common.io.Resources;
-import com.klarna.hiverunner.annotations.*;
-import com.klarna.hiverunner.builder.HiveShellBuilder;
-import com.klarna.hiverunner.config.HiveRunnerConfig;
-import com.klarna.reflection.ReflectionUtils;
+import static org.reflections.ReflectionUtils.withAnnotation;
+import static org.reflections.ReflectionUtils.withType;
+
+import java.io.File;
+import java.io.IOException;
+import java.lang.reflect.Field;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.log4j.MDC;
@@ -40,21 +49,18 @@ import org.junit.runners.model.Statement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
-import java.lang.reflect.Field;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import static org.reflections.ReflectionUtils.withAnnotation;
-import static org.reflections.ReflectionUtils.withType;
+import com.google.common.base.Preconditions;
+import com.google.common.base.Predicates;
+import com.google.common.io.Resources;
+import com.klarna.hiverunner.annotations.HiveProperties;
+import com.klarna.hiverunner.annotations.HiveResource;
+import com.klarna.hiverunner.annotations.HiveRunnerSetup;
+import com.klarna.hiverunner.annotations.HiveSQL;
+import com.klarna.hiverunner.annotations.HiveSetupScript;
+import com.klarna.hiverunner.builder.HiveShellBuilder;
+import com.klarna.hiverunner.config.HiveRunnerConfig;
+import com.klarna.hiverunner.mutantswarm.HiveRunnerRule;
+import com.klarna.reflection.ReflectionUtils;
 
 /**
  * JUnit 4 runner that runs hive sql on a HiveServer residing in this JVM. No external dependencies needed.
@@ -64,7 +70,7 @@ public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
     protected static final Logger LOGGER = LoggerFactory.getLogger(StandaloneHiveRunner.class);
 
     protected HiveShellContainer container;
-
+    
     /**
      * We need to init config because we're going to pass
      * it around before it is actually fully loaded from the testcase.
@@ -80,18 +86,20 @@ public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
     protected List<TestRule> getTestRules(final Object target) {
         final TemporaryFolder testBaseDir = new TemporaryFolder();
 
-        TestRule hiveRunnerRule = new TestRule() {
-            @Override
-            public Statement apply(final Statement base, Description description) {
-                Statement statement = new Statement() {
-                    @Override
-                    public void evaluate() throws Throwable {
-                        evaluateStatement(target, testBaseDir, base);
-                    }
-                };
-                return statement;
-            }
-        };
+//        TestRule hiveRunnerRule = new TestRule() {
+//          
+//            @Override
+//            public Statement apply(final Statement base, Description description) {
+//                Statement statement = new Statement() {
+//                    @Override
+//                    public void evaluate() throws Throwable {
+//                      evaluateStatement(target, testBaseDir, base);
+//                    }
+//                };
+//                return statement;
+//            }
+//        };
+        HiveRunnerRule hiveRunnerRule = new HiveRunnerRule(this, target, testBaseDir);
 
         /*
          *  Note that rules will be executed in reverse order to how they're added.
@@ -102,7 +110,6 @@ public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
         rules.add(hiveRunnerRule);
         rules.add(testBaseDir);
         rules.add(ThrowOnTimeout.create(config, getName()));
-
         /*
          Make sure hive runner config rule is the first rule on the list to be executed so that any subsequent
          statements has access to the final config.
@@ -165,13 +172,14 @@ public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
     /**
      * Drives the unit test.
      */
-    protected void evaluateStatement(Object target, TemporaryFolder temporaryFolder, Statement base) throws Throwable {
+    public HiveShellContainer evaluateStatement(List<String> scripts, Object target, TemporaryFolder temporaryFolder, Statement base) throws Throwable {
         container = null;
         FileUtil.setPermission(temporaryFolder.getRoot(), FsPermission.getDirDefault());
         try {
             LOGGER.info("Setting up {} in {}", getName(), temporaryFolder.getRoot().getAbsolutePath());
-            container = createHiveServerContainer(target, temporaryFolder);
+            container = createHiveServerContainer(scripts, target, temporaryFolder);
             base.evaluate();
+            return container;
         } finally {
             tearDown();
         }
@@ -191,7 +199,7 @@ public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
     /**
      * Traverses the test case annotations. Will inject a HiveShell in the test case that envelopes the HiveServer.
      */
-    protected HiveShellContainer createHiveServerContainer(final Object testCase, TemporaryFolder baseDir)
+    protected HiveShellContainer createHiveServerContainer(final List<String> scripts, final Object testCase, TemporaryFolder baseDir)
             throws IOException {
 
         HiveServerContext context = new StandaloneHiveServerContext(baseDir, config);
@@ -201,7 +209,10 @@ public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
         HiveShellBuilder hiveShellBuilder = new HiveShellBuilder();
         hiveShellBuilder.setCommandShellEmulation(config.getCommandShellEmulation());
 
-        HiveShellField shellSetter = loadScriptUnderTest(testCase, hiveShellBuilder);
+         HiveShellField shellSetter = loadScriptUnderTest(testCase, hiveShellBuilder);
+         if (scripts != null) {
+           hiveShellBuilder.overrideScriptsUnderTest(scripts);
+        } 
 
         hiveShellBuilder.setHiveServerContainer(hiveTestHarness);
 
@@ -230,14 +241,14 @@ public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
                     testCaseInstance.getClass(), withAnnotation(HiveSQL.class));
 
             Preconditions.checkState(fields.size() == 1, "Exact one field should to be annotated with @HiveSQL");
-
+            
             final Field field = fields.iterator().next();
-            List<Path> scripts = new ArrayList<>();
             HiveSQL annotation = field.getAnnotation(HiveSQL.class);
+            List<Path> scriptsUnderTest = new ArrayList<>();
             for (String scriptFilePath : annotation.files()) {
                 Path file = Paths.get(Resources.getResource(scriptFilePath).toURI());
                 assertFileExists(file);
-                scripts.add(file);
+                scriptsUnderTest.add(file);
             }
 
             Charset charset = annotation.encoding().equals("") ?
@@ -245,7 +256,7 @@ public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
 
             final boolean isAutoStart = annotation.autoStart();
 
-            hiveShellBuilder.setScriptsUnderTest(scripts, charset);
+            hiveShellBuilder.setScriptsUnderTest(scriptsUnderTest, charset);
 
             return new HiveShellField() {
                 @Override
@@ -271,7 +282,7 @@ public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
     protected void loadAnnotatedSetupScripts(Object testCase, HiveShellBuilder workFlowBuilder) {
         Set<Field> setupScriptFields = ReflectionUtils.getAllFields(testCase.getClass(),
                 withAnnotation(HiveSetupScript.class));
-
+        
         for (Field setupScriptField : setupScriptFields) {
             if (ReflectionUtils.isOfType(setupScriptField, String.class)) {
                 String script = ReflectionUtils.getFieldValue(testCase, setupScriptField.getName(), String.class);
@@ -388,4 +399,5 @@ public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
 
         boolean isAutoStart();
     }
+    
 }

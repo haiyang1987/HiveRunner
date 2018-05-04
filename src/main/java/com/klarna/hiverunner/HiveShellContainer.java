@@ -16,6 +16,8 @@
 
 package com.klarna.hiverunner;
 
+import java.util.List;
+
 /**
  * Wrapper for the HiveShell that allows the fwk to sugar the HiveShell with functionality that will not be exposed to
  * the test case creator.
@@ -27,4 +29,6 @@ public interface HiveShellContainer extends HiveShell {
      * no residue for coming test cases.
      */
     void tearDown();
+    
+    List<String> getScriptsUnderTest();
 }

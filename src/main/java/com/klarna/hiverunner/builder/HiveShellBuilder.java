@@ -34,7 +34,7 @@ import java.util.Map;
  * Builds a HiveShell.
  */
 public class HiveShellBuilder {
-    private final List<String> scriptsUnderTest = new ArrayList<>();
+    private List<String> scriptsUnderTest = new ArrayList<>();
     private final Map<String, String> props = new HashMap<>();
     private HiveServerContainer hiveServerContainer;
     private final List<HiveResource> resources = new ArrayList<>();
@@ -76,13 +76,17 @@ public class HiveShellBuilder {
       this.commandShellEmulation = commandShellEmulation;
     }
     
-    public HiveShellContainer buildShell(List<String> scriptsUnderTest) {
-      return new HiveShellTearable(hiveServerContainer, props, setupScripts, resources, scriptsUnderTest,
-          commandShellEmulation);
-    }
+//    public HiveShellContainer buildShell(List<String> scriptsUnderTest) {
+//      return new HiveShellTearable(hiveServerContainer, props, setupScripts, resources, scriptsUnderTest,
+//          commandShellEmulation);
+//    }
 
     public HiveShellContainer buildShell() {
         return new HiveShellTearable(hiveServerContainer, props, setupScripts, resources, scriptsUnderTest, commandShellEmulation);
+    }
+
+    public void overrideScriptsUnderTest(List<String> scripts) {
+      scriptsUnderTest = new ArrayList<>(scripts);
     }
 }
 

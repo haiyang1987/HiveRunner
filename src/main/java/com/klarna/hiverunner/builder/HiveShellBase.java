@@ -422,4 +422,8 @@ class HiveShellBase implements HiveShell {
     }
   }
 
+  public List<String> getScriptsUnderTest() {
+    return scriptsUnderTest;
+  }
+
 }
