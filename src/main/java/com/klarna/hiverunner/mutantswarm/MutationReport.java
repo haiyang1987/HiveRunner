@@ -19,11 +19,36 @@ import com.klarna.hiverunner.sql.ASTConverter;
 public class MutationReport {
   private final static File reportFile = new File("../hiverunner/target", "mutation-reports");
 
-  public static void generateHtmlMutantReport(String originalQuery, List<ASTNode> activeMutations) {
+  public static void generateHtmlMutantReport(List<String> originalScripts, List<List<String>> activeMutations) {
     reportFile.mkdir();
-    originalQuery = normaliseQuery(originalQuery);
     File htmlFile = new File(reportFile, (new SimpleDateFormat("yyyyMMdd-HH:mm")).format(new Date()) + ".html");
-    try (BufferedWriter bw = new BufferedWriter(new FileWriter(htmlFile))) {
+    try (BufferedWriter bw = new BufferedWriter(new FileWriter(htmlFile))){
+//      setUpFile(bw);
+
+      for (int i = 0; i < originalScripts.size(); i++) {
+        String originalScript = normaliseQuery(originalScripts.get(i)); // check this ****
+//        System.out.println("normalised original script; " + originalScript);
+        bw.write("<p><b>List of Survived Mutations for <i>" + originalScript + "</i></b></p>");
+
+        for (List<String> scriptList : activeMutations) {
+          String mutatedScript = normaliseQuery(scriptList.get(i));
+//          System.out.println("normalised mutated script; " + mutatedScript);
+
+          List<String> mutatedQueryArray = splitQueryByMutant(originalScript, mutatedScript); // check this ****
+
+//          System.out.println("difference; " + mutatedQueryArray.get(1));
+//          writeToFile(mutatedQueryArray, bw);
+        }
+      }
+//      endFile(bw);
+
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  private static void setUpFile(BufferedWriter bw) {
+    try {
       bw.write("<!DOCTYPE HTML>");
       bw.newLine();
       bw.write("<html>");
@@ -35,36 +60,19 @@ public class MutationReport {
       bw.write("</head>");
       bw.newLine();
       bw.write("<body>");
-      bw.write("<p><b>List of Survived Mutations for <i>" + originalQuery + "</i></b></p>");
       bw.newLine();
 
-      if (activeMutations != null) {
-        for (ASTNode node : activeMutations) {
-          ASTConverter converter = new ASTConverter(false);
-          bw.newLine();
-          String outputQuery = normaliseQuery(converter.treeToQuery(node));
+      // <div style="color:lightblue">some</div> // changes the colour of line
+      // <span style="background-color:yellow">some</span> // changes colour of what ever is contained within 'span'
+      bw.newLine();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
 
-          List<String> splitQuery = splitQuery(originalQuery, outputQuery);
-
-          bw.write("<p>"
-              + "<span style=\"background-color:lightgreen\">"
-              + splitQuery.get(0)
-              + "</span>"
-              + "<span style=\"background-color:pink\">"
-              + splitQuery.get(1)
-              + "</span>"
-              + "<span style=\"background-color:lightgreen\">"
-              + splitQuery.get(2)
-              + "</span>"
-              + "</p>");
-
-          // <div style="color:lightblue">some</div> // changes the colour of line
-          // <span style="background-color:yellow">some</span> // changes colour of what ever is contained within 'span'
-          bw.newLine();
-        }
-        bw.newLine();
-        bw.write("<p>- - End of list - -</p>");
-      }
+  private static void endFile(BufferedWriter bw) {
+    try {
+      bw.write("<p>- - End of Mutations - -</p>");
       bw.newLine();
       bw.write("</body>");
       bw.newLine();
@@ -74,7 +82,26 @@ public class MutationReport {
     }
   }
 
-  private static List<String> splitQuery(String originalQuery, String outputQuery) {
+  private static void writeToFile(List<String> mutatedQueryArray, BufferedWriter bw) {
+    try {
+      bw.write("<p>"
+          + "<span style=\"background-color:lightgreen\">"
+          + mutatedQueryArray.get(0)
+          + "</span>"
+          + "<span style=\"background-color:pink\">"
+          + mutatedQueryArray.get(1)
+          + "</span>"
+          + "<span style=\"background-color:lightgreen\">"
+          + mutatedQueryArray.get(2)
+          + "</span>"
+          + "</p>");
+      bw.newLine();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  private static List<String> splitQueryByMutant(String originalQuery, String outputQuery) {
     List<String> str = new ArrayList<>();
     int diffIndex = StringUtils.indexOfDifference(originalQuery, outputQuery);
     str.add(outputQuery.substring(0, diffIndex));

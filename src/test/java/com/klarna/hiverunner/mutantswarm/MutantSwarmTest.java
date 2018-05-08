@@ -1,9 +1,11 @@
 package com.klarna.hiverunner.mutantswarm;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -24,7 +26,7 @@ public class MutantSwarmTest {
   @HiveSetupScript
   private final File insert = new File("src/test/resources/mutantSwarmTest/insert.hql");
 
-  @HiveSQL(files = { "mutantSwarmTest/select.hql" })
+  @HiveSQL(files = { "mutantSwarmTest/select2.hql" })
   public HiveShell hiveShell;
 
   // @Before
@@ -40,26 +42,34 @@ public class MutantSwarmTest {
   // .commit();
   // }
 
-  @Before
-  public void before(){
-    System.out.println("test before()");
-  }
-  
-  @After
-  public void after(){
-    System.out.println("test after()");
-  }
+  // @Before
+  // public void before(){
+  // System.out.println("test before()");
+  // }
+  //
+  // @After
+  // public void after(){
+  // System.out.println("test after()");
+  // }
 
   @Test
   public void test() {
     System.out.println("RUNNING TEST");
-    List<String> result = hiveShell.executeQuery("SELECT * FROM bar");
-//    assertThat(result.size(), is(1));
-//    assertThat(result.get(0), is("GREEN"));
+    final List<String> result = hiveShell.executeQuery("SELECT * FROM foobar");
     System.out.println("Result: " + result);
-    assertThat(result, is(Arrays.asList("GREEN")));
-    // System.out.println("TEST PASSED");
+    System.out.println(result.equals(Arrays.asList("GREEN")));
+//    System.out.println(String.valueOf(result));
+    List<String> expected = Arrays.asList("GREEN");
+    assertEquals(expected, result);
   }
+
+  // @Test
+  // public void test() {
+  // System.out.println("RUNNING TEST");
+  // List<String> result = hiveShell.executeQuery("SELECT * FROM bar");
+  // System.out.println("Result: " + result);
+  // assertThat(result, is(Arrays.asList("GREEN")));
+  // }
 
   // @Test
   // public void test2() {

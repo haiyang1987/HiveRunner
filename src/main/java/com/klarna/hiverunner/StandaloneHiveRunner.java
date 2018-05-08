@@ -86,19 +86,6 @@ public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
     protected List<TestRule> getTestRules(final Object target) {
         final TemporaryFolder testBaseDir = new TemporaryFolder();
 
-//        TestRule hiveRunnerRule = new TestRule() {
-//          
-//            @Override
-//            public Statement apply(final Statement base, Description description) {
-//                Statement statement = new Statement() {
-//                    @Override
-//                    public void evaluate() throws Throwable {
-//                      evaluateStatement(target, testBaseDir, base);
-//                    }
-//                };
-//                return statement;
-//            }
-//        };
         HiveRunnerRule hiveRunnerRule = new HiveRunnerRule(this, target, testBaseDir);
 
         /*

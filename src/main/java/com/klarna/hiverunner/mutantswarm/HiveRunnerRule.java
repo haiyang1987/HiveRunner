@@ -35,7 +35,6 @@ public class HiveRunnerRule implements TestRule {
 
   @Override
   public Statement apply(Statement base, Description description) {
-    System.out.println("hive runner rule apply method");
     return new HiveRunnerRuleStatement(runner, target, base, testBaseDir);
   }
 
@@ -61,7 +60,7 @@ public class HiveRunnerRule implements TestRule {
     public void evaluate() throws Throwable {
       HiveShellContainer container = runner.evaluateStatement(scriptsUnderTest, target, testBaseDir, base);
       scriptsUnderTest = container.getScriptsUnderTest();
-      System.out.println("Ran HiveRunner test scripts: " + scriptsUnderTest);
+      // System.out.println("Ran HiveRunner test scripts: " + scriptsUnderTest);
     }
 
   }

@@ -18,7 +18,9 @@ import com.klarna.hiverunner.sql.StatementsSplitter;
 /** A rule to run a standard HR test, and then once again for each mutant. */
 public class MutantSwarmRule implements TestRule {
 
+  private List<String> originalScripts = new ArrayList<>();
   private List<List<String>> mutants;
+  private List<List<String>> aliveMutations = new ArrayList<>();
   private HiveRunnerRule hiveRunnerRule;
   private final List<String> queriesToIgnore = Arrays.asList("set", "drop", "use", "grant");
 
@@ -43,7 +45,8 @@ public class MutantSwarmRule implements TestRule {
     public void evaluate() throws Throwable {
       System.out.println("Running regular test");
       base.evaluate();
-      mutants = generateMutants(hiveRunnerRule.getScriptsUnderTest());
+      originalScripts = hiveRunnerRule.getScriptsUnderTest();
+      mutants = generateMutants(originalScripts);
 
       System.out.println("Running mutant tests");
       for (int i = 0; i < mutants.size(); i++) {
@@ -51,13 +54,19 @@ public class MutantSwarmRule implements TestRule {
         hiveRunnerRule.setScriptsUnderTest(mutants.get(i));
         try {
           base.evaluate();
-          System.out.println("mutant survived");
+          // catch mutants *****
+          aliveMutations.add(mutants.get(i));
+          System.out.println("mutant survived - bad");
         } catch (AssertionError e) {
-          System.out.println("mutant killed");
+          // make note of killed mutants *****
+          System.out.println("mutant killed - " + e.getMessage());
         }
         // need to have a try catch around this to catch any AssertionErrors - good
         // not catching them is bad - mutant survived
       }
+
+      // generate mutation report
+      MutationReport.generateHtmlMutantReport(originalScripts, aliveMutations);
     }
   }
 
@@ -124,15 +133,8 @@ public class MutantSwarmRule implements TestRule {
 
   private List<String> mutateQuery(String query) {
     query = checkForVariableSubstitution(query);
-    ASTNode tree;
-    try {
-      tree = ParseUtils.parse(query);
-      Mutator mutator = new Mutator();
-      return mutator.generateMutations(query);
-    } catch (ParseException e) {
-      e.printStackTrace();
-    }
-    return new ArrayList<>();
+    Mutator mutator = new Mutator();
+    return mutator.generateMutations(query);
   }
 
   private String checkForVariableSubstitution(String query) {
