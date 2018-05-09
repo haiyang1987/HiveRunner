@@ -27,12 +27,12 @@ public class MutationReport {
 
       for (int i = 0; i < originalScripts.size(); i++) {
         String originalScript = normaliseQuery(originalScripts.get(i)); // check this ****
-//        System.out.println("normalised original script; " + originalScript);
+        System.out.println("normalised original script; " + originalScript);
         bw.write("<p><b>List of Survived Mutations for <i>" + originalScript + "</i></b></p>");
 
         for (List<String> scriptList : activeMutations) {
           String mutatedScript = normaliseQuery(scriptList.get(i));
-//          System.out.println("normalised mutated script; " + mutatedScript);
+          System.out.println("normalised mutated script; " + mutatedScript);
 
           List<String> mutatedQueryArray = splitQueryByMutant(originalScript, mutatedScript); // check this ****
 

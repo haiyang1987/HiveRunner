@@ -57,14 +57,16 @@ public class Mutator {
     switch (ast.getToken().getType()) { // returns an int value
 
     case HiveParser.EQUAL:
-      // mutations.add(mutateTree(ast, HiveParser.NOTEQUAL, "<>"));
-      // mutations.add(mutateTree(ast, HiveParser.GREATERTHAN, ">"));
-//      mutations.add(mutateTree(ast, HiveParser.GREATERTHANOREQUALTO, ">="));
-       mutations.add(mutateTree(ast, HiveParser.LESSTHAN, "<"));
-      mutations.add(mutateTree(ast, HiveParser.LESSTHANOREQUALTO, "<="));
+//      mutations.add(mutateTree(ast, HiveParser.LESSTHANOREQUALTO, "<="));
 
-      // mutations.add(mutateTree(ast, HiveParser.LESSTHAN, "<"));
-//      mutations.add(mutateTree(ast, HiveParser.GREATERTHAN, ">"));
+      mutations.add(mutateTree(ast, HiveParser.NOTEQUAL, "<>"));
+      mutations.add(mutateTree(ast, HiveParser.GREATERTHAN, ">"));
+      mutations.add(mutateTree(ast, HiveParser.GREATERTHANOREQUALTO, ">="));
+       mutations.add(mutateTree(ast, HiveParser.LESSTHAN, "<"));
+       mutations.add(mutateTree(ast, HiveParser.LESSTHANOREQUALTO, "<="));
+
+//      mutations.add(mutateTree(ast, HiveParser.LESSTHAN, "<"));
+      // mutations.add(mutateTree(ast, HiveParser.GREATERTHAN, ">"));
     }
   }
 
