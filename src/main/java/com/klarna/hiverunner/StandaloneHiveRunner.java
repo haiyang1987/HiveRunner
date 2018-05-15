@@ -68,8 +68,10 @@ import com.klarna.reflection.ReflectionUtils;
 public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
 
     protected static final Logger LOGGER = LoggerFactory.getLogger(StandaloneHiveRunner.class);
-
+    
     protected HiveShellContainer container;
+
+    protected List<Path> scriptsUnderTest;
     
     /**
      * We need to init config because we're going to pass
@@ -231,7 +233,7 @@ public class StandaloneHiveRunner extends BlockJUnit4ClassRunner {
             
             final Field field = fields.iterator().next();
             HiveSQL annotation = field.getAnnotation(HiveSQL.class);
-            List<Path> scriptsUnderTest = new ArrayList<>();
+            scriptsUnderTest = new ArrayList<>();
             for (String scriptFilePath : annotation.files()) {
                 Path file = Paths.get(Resources.getResource(scriptFilePath).toURI());
                 assertFileExists(file);

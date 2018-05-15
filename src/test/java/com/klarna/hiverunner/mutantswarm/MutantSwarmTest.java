@@ -20,33 +20,45 @@ public class MutantSwarmTest {
   @HiveSetupScript
   private final File setup = new File("src/test/resources/mutantSwarmTest/setup.hql");
   @HiveSetupScript
-  private final File insert = new File("src/test/resources/mutantSwarmTest/insert.hql");
+  private final File insert = new File("src/test/resources/mutantSwarmTest/insert2.hql");
 
-  @HiveSQL(files = { "mutantSwarmTest/select2.hql" })
+  @HiveSQL(files = { "mutantSwarmTest/select.hql", "mutantSwarmTest/select2.hql" })
   public HiveShell hiveShell;
 
   private static int counter = 0;
 
-  // @Before
-  // public void before(){
-  // System.out.println("test before()");
-  // }
-  
   @After
   public void after() {
     counter++;
-    System.out.println("incrementing counter");
   }
 
   @Test
-  public void test() {
-
-    System.out.println("RUNNING TEST " + counter);
-    final List<String> result = hiveShell.executeQuery("SELECT * FROM foobar");
+  public void test(){
+    System.out.println("RUNNING TEST BLOCK 1 - #" + counter);
+    List<String> result = hiveShell.executeQuery("SELECT * FROM bar");
     System.out.println("Result: " + result);
-    System.out.println(result.equals(Arrays.asList("GREEN")));
-    List<String> expected = Arrays.asList("GREEN");
-    assertEquals("Test: " + counter, expected, result);
+    List<String> expected = Arrays.asList("1\ttrue", "3\ttrue", "3\tfalse", "5\tfalse");
+    assertEquals(expected, result);
   }
+  
+  @Test
+  public void test2() {
+    System.out.println("RUNNING TEST BLOCK 2 - #" + counter);
+    List<String> result = hiveShell.executeQuery("SELECT * FROM foobar");
+    System.out.println("Result: " + result);
+    List<String> expected = Arrays.asList("true", "false");
+//    assertEquals("Test: " + counter, expected, result);
+    assertEquals(expected, result);
+  }
+  
+//  @Test
+//  public void test2() {
+//    System.out.println("RUNNING TEST BLOCK 2 - #" + counter);
+//    final List<String> result = hiveShell.executeQuery("SELECT * FROM foobar");
+//    System.out.println("Result: " + result);
+//    List<String> expected = Arrays.asList("Green");
+////    assertEquals("Test: " + counter, expected, result);
+//    assertEquals(expected, result);
+//  }
 
 }

@@ -1,7 +1,10 @@
 package com.klarna.hiverunner.mutantswarm;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.antlr.runtime.CommonToken;
 import org.antlr.runtime.Token;
@@ -13,34 +16,106 @@ import org.apache.hadoop.hive.ql.parse.ParseException;
 import org.apache.hadoop.hive.ql.parse.ParseUtils;
 
 import com.klarna.hiverunner.sql.ASTConverter;
+import com.klarna.hiverunner.sql.StatementsSplitter;
 
 public class Mutator {
 
-  private final List<ASTNode> mutations;
-  private final List<String> mutatedStrings;
+  private List<Mutant> mutantList;
+  private String script;
+  private final List<String> queriesToIgnore = Arrays.asList("set", "drop", "use", "grant");
+  private ASTConverter converter;
 
-  public Mutator() {
-    mutations = new ArrayList<ASTNode>();
-    mutatedStrings = new ArrayList<String>();
+  private int statementIndex;
+  private List<String> statementList;
+  StringBuilder scriptBuilder = new StringBuilder();
+
+  public Mutator(String script) {
+    mutantList = new ArrayList<>();
+    this.script = script;
+    converter = new ASTConverter(false);
   }
 
-  public List<String> generateMutations(String query) {
-    mutantList(getAST(query));
-    ASTConverter converter = new ASTConverter(false);
-    for (ASTNode mutant : mutations) {
-      mutatedStrings.add(converter.treeToQuery(mutant));
+  // pass in the original script
+  // split the script into statements
+  // for each statement generate mutants
+  // - turn into tree
+  // - for each token in tree
+  // - - create a new mutant
+  // - - add all mutants to a list
+  // return the list of mutants
+
+  public List<Mutant> mutateScript() {
+    statementList = StatementsSplitter.splitStatementsRemoveComments(script);
+    for (statementIndex = 0; statementIndex < statementList.size(); statementIndex++) {
+      String statement = statementList.get(statementIndex);
+      if (canMutate(statement)) {
+        statement = checkForVariableSubstitution(statement);
+        mutateTreeNode(getAST(statement)); // mutate each statement in the script
+      }
+      scriptBuilder.append(statement);
     }
-    return mutatedStrings;
+    return mutantList;
   }
 
-  public void mutantList(ASTNode ast) {
-    generateMultipleMutants(ast);
+  private String checkForVariableSubstitution(String query) {
+    Pattern pattern = Pattern.compile("(.*)(\\$\\{.*\\})(.*)");
+    Matcher matcher = pattern.matcher(query);
+    while (matcher.find()) {
+      query = query.replace(matcher.group(2), "varSub");
+      matcher = pattern.matcher(query);
+    }
+    return query;
+  }
+
+  public void mutateTreeNode(ASTNode ast) {
+    generateMutants(ast);
     ArrayList<Node> children = ast.getChildren();
     if (children != null) {
       for (Node child : children) {
-        mutantList((ASTNode) child);
+        mutateTreeNode((ASTNode) child);
       }
     }
+  }
+
+  public void generateMutants(ASTNode ast) {
+    switch (ast.getToken().getType()) { // returns an int value
+
+    case HiveParser.EQUAL:
+      createMutant("<>", HiveParser.NOTEQUAL, ast, "=");
+      createMutant(">", HiveParser.GREATERTHAN, ast, "=");
+      // createMutant(">=", HiveParser.GREATERTHANOREQUALTO, ast, "=");
+      // createMutant("<", HiveParser.LESSTHAN, ast, "=");
+      // createMutant("<=", HiveParser.LESSTHANOREQUALTO, ast, "=");
+    }
+  }
+
+  private void createMutant(String text, int token, ASTNode astToReplace, String oldNodeText) {
+    String mutant = mutateTree(astToReplace, token, text);
+    String mutatedScript = buildMutantScript(scriptBuilder.toString(), mutant,
+        statementList.subList(statementIndex + 1, statementList.size()));
+
+    mutantList.add(new Mutant(text, oldNodeText, mutatedScript, script));
+  }
+
+  private String buildMutantScript(String startOfScript, String mutant, List<String> restOfScript) {
+    StringBuilder mutantScriptBuilder = new StringBuilder();
+    mutantScriptBuilder.append(startOfScript);
+    mutantScriptBuilder.append(mutant + "; ");
+    for (String statement : restOfScript) {
+      mutantScriptBuilder.append(statement + "; ");
+    }
+    return mutantScriptBuilder.toString();
+  }
+
+  private boolean canMutate(String query) {
+    if (query.equals(" ") || query.equals("")) {
+      return false;
+    }
+    String startsWith = query;
+    if (query.contains(" ")) { // get the first word of the query
+      startsWith = query.substring(0, query.indexOf(" "));
+    }
+    return !queriesToIgnore.contains(startsWith.toLowerCase());
   }
 
   private ASTNode getAST(String query) {
@@ -53,28 +128,12 @@ public class Mutator {
     return null;
   }
 
-  private void generateMultipleMutants(ASTNode ast) {
-    switch (ast.getToken().getType()) { // returns an int value
-
-    case HiveParser.EQUAL:
-//      mutations.add(mutateTree(ast, HiveParser.LESSTHANOREQUALTO, "<="));
-
-      mutations.add(mutateTree(ast, HiveParser.NOTEQUAL, "<>"));
-      mutations.add(mutateTree(ast, HiveParser.GREATERTHAN, ">"));
-      mutations.add(mutateTree(ast, HiveParser.GREATERTHANOREQUALTO, ">="));
-       mutations.add(mutateTree(ast, HiveParser.LESSTHAN, "<"));
-       mutations.add(mutateTree(ast, HiveParser.LESSTHANOREQUALTO, "<="));
-
-//      mutations.add(mutateTree(ast, HiveParser.LESSTHAN, "<"));
-      // mutations.add(mutateTree(ast, HiveParser.GREATERTHAN, ">"));
-    }
-  }
-
-  private ASTNode mutateTree(ASTNode oldNode, int newTokenType, String newTokenText) {
+  private String mutateTree(ASTNode oldNode, int newTokenType, String newTokenText) {
     ASTNode tree = copyAST(getRoot(oldNode));
     Token token = new CommonToken(newTokenType, newTokenText);
     ASTNode newNode = new ASTNode(token);
-    return replaceNode(tree, oldNode, newNode);
+
+    return converter.treeToQuery(replaceNode(tree, oldNode, newNode));
   }
 
   private ASTNode getRoot(ASTNode ast) {

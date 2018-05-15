@@ -1481,12 +1481,3 @@ public class ASTConverter {
   }
 
 }
-
-// NOTES
-
-// rectransfrom should create a new ruleset
-// the rule set will go through the tree a build up the string
-// ...does this by building up a map of tree node to its type (rule)
-// ...calls the apply method on each rule - gets back the string
-
-// apply in the rulse set only needs to be called once, as each apply method will call rectransform on its children

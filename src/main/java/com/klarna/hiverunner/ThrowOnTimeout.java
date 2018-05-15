@@ -27,7 +27,7 @@ public class ThrowOnTimeout extends Statement {
 
     @Override
     public void evaluate() throws Throwable {
-
+        statementException = null;
         final StopWatch stopWatch = new StopWatch();
 
         if (config.isTimeoutEnabled()) {

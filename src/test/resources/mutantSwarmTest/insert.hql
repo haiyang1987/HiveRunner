@@ -1,5 +1,4 @@
 INSERT INTO TABLE foo VALUES
--- ("Red", 1, false),
-("GREEN", 2, true),
-("BLUE", 3, true);
--- ("Yellow", 4, false);
+("Green", 1, true),
+("Blue", 2, true),
+("Yellow", 3, false);

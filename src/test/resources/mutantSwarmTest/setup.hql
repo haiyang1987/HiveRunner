@@ -1,4 +1,4 @@
-DROP TABLE IF EXISTS foobar;
+-- DROP TABLE IF EXISTS foobar;
 
 CREATE TABLE IF NOT EXISTS foo (
   a String,

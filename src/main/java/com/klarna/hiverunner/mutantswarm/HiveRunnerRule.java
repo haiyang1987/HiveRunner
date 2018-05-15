@@ -35,6 +35,7 @@ public class HiveRunnerRule implements TestRule {
 
   @Override
   public Statement apply(Statement base, Description description) {
+    System.out.println("running hive runner rule apply");
     return new HiveRunnerRuleStatement(runner, target, base, testBaseDir);
   }
 

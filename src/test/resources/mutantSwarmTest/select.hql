@@ -1,4 +1,4 @@
 CREATE TABLE bar AS
-SELECT a
+SELECT b, c
 from foo
-where a = "GREEN";
+where a = "Green";
