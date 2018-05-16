@@ -1,25 +1,26 @@
 package com.klarna.hiverunner.sql;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.hive.ql.lib.Node;
 import org.apache.hadoop.hive.ql.parse.ASTNode;
 import org.apache.hadoop.hive.ql.parse.HiveParser;
 
 import com.klarna.hiverunner.sql.Rule.RuleSet;
 import com.klarna.hiverunner.sql.Rule.SingleRule;
-import com.sun.tools.javac.util.Pair;
 
 public class ASTConverter {
 
-  // String indent = " ";
-  String indent = " ";
-  boolean splitMultiInsert;
+  private final String indent = " ";
+  private final boolean splitMultiInsert;
 
   public ASTConverter(boolean splitMultiInsert) {
     this.splitMultiInsert = splitMultiInsert;
@@ -41,13 +42,12 @@ public class ASTConverter {
       // odd number of children, there is an 'else' statement
       elseBlock = "\n" + prefix + indent + "ELSE " + recTransform(children.get(children.size() - 1));
       children = dropRight(children, 1); // removes the else block from the list
-      // newChildren.add(prefix + indent + "ELSE " + recTransform(child)); // uncomment for no new line
+      // newChildren.add(prefix + indent + "ELSE " + recTransform(child));
     }
     List<String> newChildren = new ArrayList<>();
     for (ASTNode child : children) { // go through all the children
       if (i % 2 == 0) { // if i is an even number
         newChildren.add("\n" + prefix + indent + "WHEN " + recTransform(child));
-        // newChildren.add(prefix + indent + " WHEN " + recTransform(child)); // uncomment for no new line
       } else {
         newChildren.add(prefix + " THEN " + recTransform(child));
       }
@@ -55,7 +55,6 @@ public class ASTConverter {
     }
     newChildren.add(elseBlock);
     return mkString(newChildren, "", "", "\n" + prefix + "END\n");
-    // return mkString(newChildren, "", "", prefix + "END");
   }
 
   /**
@@ -85,7 +84,11 @@ public class ASTConverter {
    */
   private String formatBetween(String prefix, List<ASTNode> children) {
     String not = "";
-    if (children.get(1).getType() == HiveParser.KW_TRUE) {
+    // if (children.get(1).getType() == HiveParser.KW_TRUE) {
+    // not = " NOT";
+    // }
+    ASTNode child = children.get(0);
+    if (child.getParent().getParent().getType() == HiveParser.KW_NOT) {
       not = " NOT";
     }
     return mkString(recTransform(dropLeft(children, 3)), recTransform(children.get(2)) + not + " BETWEEN ", " AND ",
@@ -94,7 +97,6 @@ public class ASTConverter {
 
   private String formatFunction(String prefix, boolean distinct, ASTNode pt) {
     List<ASTNode> children = getChildren(pt);
-
     switch (children.get(0).getType()) {
     case HiveParser.TOK_ISNULL:
       return recTransform(children.get(1)) + " IS NULL";
@@ -103,11 +105,7 @@ public class ASTConverter {
     case HiveParser.KW_CASE:
       return "CASE " + recTransform(children.get(1)) + formatCaseWhen(dropLeft(children, 2), prefix);
     case HiveParser.KW_WHEN:
-      // case
-      // when ... then ... [else ...]
-      // end
       return "\nCASE " + formatCaseWhen(dropLeft(children, 1), prefix);
-
     case HiveParser.KW_IN:
       return inFunctionHandler(pt, prefix);
     case HiveParser.Identifier:
@@ -117,6 +115,9 @@ public class ASTConverter {
       }
       if (nodeText.equalsIgnoreCase("in")) {
         return inFunctionHandler(pt, prefix); // catcher for when 'in' isnt recognised as KW_IN
+      }
+      if (nodeText.equalsIgnoreCase("struct")) {
+        return mkString(recTransform(dropLeft(getChildren(pt), 1)), "", ", ", "");
       }
       return defaultFormatFunction(pt, prefix, children);
     case HiveParser.TOK_TINYINT:
@@ -225,32 +226,32 @@ public class ASTConverter {
     List<ASTNode> children = getChildren(pt);
     String on = "";
     if (children.size() > 2) {
-      // on = "\n" + prefix + indent + "ON " + recTransform(children.get(2), " ");
-      on = prefix + "ON " + recTransform(children.get(2), ""); // uncomment for no new line
+      on = "\n" + prefix + indent + "ON (" + recTransform(children.get(2), "");
     }
+    ;
     if (children.get(1).getType() == HiveParser.TOK_SUBQUERY) {
       join += " (";
     }
-    // return mkString(recTransform(take(children, 2), prefix), "", "\n" + prefix + join + " ", "") + on;
-    return mkString(recTransform(take(children, 2), prefix), "", prefix + join + " ", " ") + on; // uncomment for no
-    // new line
+    return mkString(recTransform(take(children, 2), prefix), "", "\n" + prefix + join + " ", "") + on + ")\n";
   }
 
   private String formatUnion(String prefix, ASTNode pt, String union) {
-    List<ASTNode> children = getChildren(pt);
-    // return mkString(recTransform(take(children, 2), prefix), "", prefix + union + "\n", "");
-    return mkString(recTransform(take(children, 2), prefix), "", prefix + union, ""); // uncomment for no new line
+    return mkString(recurseChildren(pt), "", indent + union, "\n");
   }
 
   private Pair<String, String> formatSubQuery(ASTNode pt, String prefix) {
+    String alias = recTransform((ASTNode) pt.getChild(1));
+    String closingBracket = ")";
     if (pt.getType() == HiveParser.TOK_SUBQUERY) {
-      String alias = recTransform((ASTNode) pt.getChild(1));
-      // String firstPair = "(\n" + recTransform((ASTNode) pt.getChild(0), prefix + indent) + prefix + ")";
-      String firstPair = recTransform((ASTNode) pt.getChild(0), prefix + indent) + prefix + ")"; // uncomment for no
-      // new line
-      return new Pair<>(firstPair, alias);
+      if (pt.getChild(0).getType() == HiveParser.TOK_UNIONALL
+          || pt.getChild(0).getType() == HiveParser.TOK_UNIONDISTINCT) {
+        alias = "";
+        closingBracket = "";
+      }
+      String firstPair = recTransform((ASTNode) pt.getChild(0), prefix + indent) + prefix + closingBracket;
+      return new ImmutablePair<>(firstPair, alias);
     }
-    return new Pair<>("", "");
+    return new ImmutablePair<>("", "");
   }
 
   Rule defaultRule = new Rule() {
@@ -318,9 +319,8 @@ public class ASTConverter {
         keyword += " TEMPORARY";
       }
       // **** better way to do this ?
-      if (tok_external.size() == 1
-          || children.get(1).getText().equalsIgnoreCase("external")
-          || children.get(2).getText().equalsIgnoreCase("external")) {
+      if (tok_external.size() == 1 || children.get(1).getText().equalsIgnoreCase("external")) {
+        // || children.get(2).getText().equalsIgnoreCase("external")) { // not sure when this would be used
         keyword += " EXTERNAL";
       }
       keyword += " TABLE";
@@ -367,7 +367,8 @@ public class ASTConverter {
       }
 
       if (tok_likeTable.size() == 1 && !tok_query.isEmpty()) {
-        nodes.add(tok_likeTable.get(0)); // ... AS - should only be one of these
+        nodes.add(tok_likeTable.get(0)); // ... AS - should only be one of
+                                         // these
         nodes.add(tok_query.get(0));
       }
 
@@ -403,18 +404,6 @@ public class ASTConverter {
     @Override
     public String apply(ASTNode pt, String prefix) {
       return "IF NOT EXISTS";
-    }
-  };
-
-  // if child 0 is insert into then do that, otherwise it will be "insert overwrite"
-  SingleRule tok_INSERT = new SingleRule(HiveParser.TOK_INSERT) {
-    @Override
-    public String apply(ASTNode pt, String prefix) {
-      if (pt.getChild(0).getType() == HiveParser.TOK_INSERT_INTO) {
-        return mkString(recurseChildren(pt), "", " ", "");
-      } else {
-        return mkString(recurseChildren(pt), "INSERT OVERWRITE ", " ", "");
-      }
     }
   };
 
@@ -471,8 +460,14 @@ public class ASTConverter {
   SingleRule tok_TABLESERIALIZER = new SingleRule(HiveParser.TOK_TABLESERIALIZER) {
     @Override
     public String apply(ASTNode pt, String prefix) {
-      // add functionality
       return mkString(recurseChildren(pt), "ROW FORMAT SERDE ", " ", "");
+    }
+  };
+
+  SingleRule tok_SERDENAME = new SingleRule(HiveParser.TOK_SERDENAME) {
+    @Override
+    public String apply(ASTNode pt, String prefix) {
+      return mkString(recurseChildren(pt), " ", " WITH SERDEPROPERTIES ", "");
     }
   };
 
@@ -493,7 +488,17 @@ public class ASTConverter {
   SingleRule tok_TABLEPROPERTIES = new SingleRule(HiveParser.TOK_TABLEPROPERTIES) {
     @Override
     public String apply(ASTNode pt, String prefix) {
-      return mkString(recurseChildren(pt), "TBLPROPERTIES (", " ", ")");
+      if (pt.getParent().getType() == HiveParser.TOK_SERDENAME) {
+        return mkString(recurseChildren(pt), "", "", "\n");
+      }
+      return mkString(recurseChildren(pt), "TBLPROPERTIES ", " ", "\n");
+    }
+  };
+
+  SingleRule tok_TABLEPROPLIST = new SingleRule(HiveParser.TOK_TABLEPROPLIST) {
+    @Override
+    public String apply(ASTNode pt, String prefix) {
+      return mkString(recurseChildren(pt), " (", ", ", ")");
     }
   };
 
@@ -587,14 +592,14 @@ public class ASTConverter {
   SingleRule tok_VARCHAR = new SingleRule(HiveParser.TOK_VARCHAR) {
     @Override
     public String apply(ASTNode pt, String prefix) {
-      return "VARCHAR";
+      return mkString(recurseChildren(pt), "VARCHAR(", "", ")");
     }
   };
 
   SingleRule tok_CHAR = new SingleRule(HiveParser.TOK_CHAR) {
     @Override
     public String apply(ASTNode pt, String prefix) {
-      return "CHAR";
+      return mkString(recurseChildren(pt), "CHAR(", "", ")");
     }
   };
 
@@ -616,17 +621,27 @@ public class ASTConverter {
     }
   };
 
+  SingleRule tok_VALUE_ROW = new SingleRule(HiveParser.TOK_VALUE_ROW) {
+    @Override
+    public String apply(ASTNode pt, String prefix) {
+      return mkString(recurseChildren(pt), "VALUES (", ", ", ")");
+    }
+  };
+
   SingleRule tok_DESTINATION = new SingleRule(HiveParser.TOK_DESTINATION) {
     @Override
     public String apply(ASTNode pt, String prefix) {
       List<ASTNode> children = getChildren(pt);
       if (children.get(0).getType() == HiveParser.TOK_DIR) {
         if (children.get(0).getChild(0).getType() != HiveParser.TOK_TMP_FILE) {
-          return mkString(recurseChildren(pt), "INSERT OVERWRITE DIRECTORY ", " ", "");
+          return mkString(recurseChildren(pt), "INSERT OVERWRITE DIRECTORY ", " ", "\n");
         }
-        return ""; // this is a subquery
+        return ""; // this
+                   // is
+                   // a
+                   // subquery
       } else {
-        return mkString(recurseChildren(pt), "INSERT OVERWRITE ", " ", "");
+        return mkString(recurseChildren(pt), "INSERT OVERWRITE ", " ", "\n");
       }
     }
   };
@@ -636,6 +651,8 @@ public class ASTConverter {
    * {@code
    * TOK_QUERY
    * ├──TOK_FROM
+   * |    ├── [TOK_SUBQUERY]
+   * │    |        └── [TOK_UNIONALL] * dont want 'SELECT _ FROM _ UNION _' only want '_ UNION _' 
    * │    └── ...
    * └──TOK_INSERT
    *      └── ...
@@ -650,16 +667,31 @@ public class ASTConverter {
       List<ASTNode> tok_inserts = getChildrenWithTypes(pt, HiveParser.TOK_INSERT);
 
       if (tok_inserts.size() == 1) {
+
         ASTNode insert = tok_inserts.get(0);
         List<ASTNode> children = getChildren(insert);
-        ASTNode dest = children.get(0);
-        ASTNode select = children.get(1);
-        List<ASTNode> rest = children.subList(2, children.size());
-        // from - inclusive. to - exclusive
-
         List<ASTNode> nodes = tok_ctes;
+        ASTNode dest = children.get(0);
+        List<ASTNode> rest = children.subList(2, children.size());
         nodes.add(dest);
-        nodes.add(select);
+
+        ASTNode tok_from_grandchild = (ASTNode) tok_from.get(0).getChild(0).getChild(0); // * see above comments
+        if (children.get(0).getType() != HiveParser.TOK_INSERT_INTO
+            && tok_from_grandchild.getType() != HiveParser.TOK_UNIONALL
+            && tok_from_grandchild.getType() != HiveParser.TOK_UNIONDISTINCT) {
+
+          ASTNode select = children.get(1);
+          nodes.add(select);
+        }
+
+        if (tok_from.size() == 1) {
+          if (tok_from.get(0).getChild(0).getChild(0).getType() == HiveParser.TOK_UNIONALL
+              || tok_from.get(0).getChild(0).getType() == HiveParser.TOK_UNIONDISTINCT) {
+            // dont add select
+            // dont write from.
+          }
+        }
+
         nodes.addAll(tok_from);
         nodes.addAll(rest);
 
@@ -682,8 +714,7 @@ public class ASTConverter {
 
             newList.add(mkString(recTransform(nodes, prefix), ""));
           }
-          // return mkString(newList, ";\n");
-          return mkString(newList, "; "); // uncomment for no new line
+          return mkString(newList, ";\n");
         } else {
           List<ASTNode> nodes = tok_ctes;
           nodes.addAll(tok_from);
@@ -706,7 +737,7 @@ public class ASTConverter {
 
       // select a from ( select a from b) [as] t
       // cant just add in 'as' here as the input query doesnt always have it
-      return pair.fst + " " + pair.snd;
+      return pair.getLeft() + " " + pair.getRight();
     }
   };
 
@@ -742,10 +773,7 @@ public class ASTConverter {
         op = pt.getChild(0).getChild(0).getText();
       }
       ASTNode tok_query = (ASTNode) pt.getChild(1);
-      // return col + op + " \n(" + recTransform(tok_query, prefix.replace("\n", "") + indent) + ")";
-      return col + op + " (" + recTransform(tok_query, prefix.replace("\n", "") + indent) + ")"; // uncomment for no
-      // new
-      // line
+      return col + op + " (" + recTransform(tok_query, prefix.replace("\n", "") + indent) + ")";
     }
   };
 
@@ -753,12 +781,12 @@ public class ASTConverter {
     @Override
     public String apply(ASTNode pt, String prefix) {
       List<String> newList = new ArrayList<>();
+
       for (ASTNode node : getChildren(pt)) {
         Pair<String, String> pair = formatSubQuery(node, prefix);
-        newList.add(pair.snd + " AS " + pair.fst);
+        newList.add(pair.getRight() + " AS (" + pair.getLeft());
       }
-      // return mkString(newList, "WITH ", "\n, ", "\n");
-      return mkString(newList, "WITH ", ", ", " "); // uncomment for no new line
+      return mkString(newList, "WITH ", ",\n" + indent, "\n");
     }
   };
 
@@ -768,20 +796,22 @@ public class ASTConverter {
 
       List<ASTNode> children = getChildren(pt);
       if (children.get(0).getType() == HiveParser.TOK_SUBQUERY) {
-        // return mkString(recurseChildren(pt, prefix), prefix + "FROM (", " ", "\n"); // uncomment for no new line
-        return mkString(recurseChildren(pt, prefix), prefix + "FROM (", " ", " "); // uncomment for no new line
+        ASTNode grandchild = (ASTNode) children.get(0).getChild(0);
+        if (grandchild.getType() == HiveParser.TOK_UNIONALL) {
+          return mkString(recurseChildren(pt, prefix + indent), prefix + "", " ", "\n");
+        }
+        return mkString(recurseChildren(pt, prefix + indent), prefix + "FROM\n" + indent + " (", " ", "\n");
+      } else if (children.get(0).getType() == HiveParser.TOK_VIRTUAL_TABLE) {
+        return mkString(recurseChildren(pt, prefix), prefix + "", " ", "\n");
       }
-
-      // return mkString(recurseChildren(pt, prefix), prefix + "FROM ", " ", "\n");
-      return mkString(recurseChildren(pt, prefix), prefix + "FROM ", " ", " "); // uncomment for no new line
+      return mkString(recurseChildren(pt, prefix), prefix + "FROM ", " ", "\n");
     }
   };
 
   SingleRule tok_TAB = new SingleRule(HiveParser.TOK_TAB) {
     @Override
     public String apply(ASTNode pt, String prefix) {
-      // return mkString(recurseChildren(pt), "TABLE ", " ", "\n");
-      return mkString(recurseChildren(pt), "TABLE ", " ", " ");// uncomment for no new line
+      return mkString(recurseChildren(pt), "TABLE ", " ", "\n");
     }
   };
 
@@ -816,24 +846,15 @@ public class ASTConverter {
   SingleRule tok_SELECT = new SingleRule(HiveParser.TOK_SELECT) {
     @Override
     public String apply(ASTNode pt, String prefix) {
-      // String newline = "\n" + prefix + indent;
-      // return mkString(recurseChildren(pt, prefix + indent), prefix + "SELECT" + newline, "," + newline, "\n");
-      // return mkString(recurseChildren(pt, prefix + indent), prefix + "SELECT" + prefix + indent, "," + prefix +
-      // indent,
-      return mkString(recurseChildren(pt, prefix), prefix + "SELECT " + prefix, ", " + prefix, " ");
-      // uncomment for no new line
+      return mkString(recurseChildren(pt, prefix), prefix + "SELECT " + prefix, ",\n" + prefix + indent, "\n");
     }
   };
 
   SingleRule tok_SELECTDI = new SingleRule(HiveParser.TOK_SELECTDI) {
     @Override
     public String apply(ASTNode pt, String prefix) {
-      // String newline = "\n" + prefix + indent;
-      // return mkString(recurseChildren(pt, prefix + indent), prefix + "SELECT DISTINCT" + newline, "," + newline,
-      // "\n");
       return mkString(recurseChildren(pt, prefix + indent), prefix + "SELECT DISTINCT " + prefix + indent,
-          "," + prefix + indent, " ");
-      // uncomment for no new line
+          "," + prefix + indent, "\n");
     }
   };
 
@@ -847,40 +868,35 @@ public class ASTConverter {
   SingleRule tok_GROUPBY = new SingleRule(HiveParser.TOK_GROUPBY) {
     @Override
     public String apply(ASTNode pt, String prefix) {
-      // return mkString(recurseChildren(pt), prefix + "GROUP BY ", ", ", "\n");
-      return mkString(recurseChildren(pt), prefix + "GROUP BY ", ", ", " "); // uncomment for no new line
+      return mkString(recurseChildren(pt), prefix + "GROUP BY ", ", ", "\n");
     }
   };
 
   SingleRule tok_ORDERBY = new SingleRule(HiveParser.TOK_ORDERBY) {
     @Override
     public String apply(ASTNode pt, String prefix) {
-      // return mkString(recurseChildren(pt), prefix + "ORDER BY ", ", ", "\n");
-      return mkString(recurseChildren(pt), prefix + "ORDER BY ", ", ", " "); // uncomment for no new line
+      return mkString(recurseChildren(pt), prefix + "ORDER BY ", ", ", "\n");
     }
   };
 
   SingleRule tok_DISTRIBUTEBY = new SingleRule(HiveParser.TOK_DISTRIBUTEBY) {
     @Override
     public String apply(ASTNode pt, String prefix) {
-      // return mkString(recurseChildren(pt), prefix + "DISTRIBUTE BY ", ", ", "\n");
-      return mkString(recurseChildren(pt), prefix + "DISTRIBUTE BY ", ", ", " "); // uncomment for no new line
+      return mkString(recurseChildren(pt), prefix + "DISTRIBUTE BY ", ", ", "\n");
     }
   };
 
   SingleRule tok_SORTBY = new SingleRule(HiveParser.TOK_SORTBY) {
     @Override
     public String apply(ASTNode pt, String prefix) {
-      // return mkString(recurseChildren(pt), prefix + "SORT BY ", ", ", "\n");
-      return mkString(recurseChildren(pt), prefix + "SORT BY ", ", ", " "); // uncomment for no new line
+      return mkString(recurseChildren(pt), prefix + "SORT BY ", ", ", "\n");
     }
   };
 
   SingleRule tok_CLUSTERBY = new SingleRule(HiveParser.TOK_CLUSTERBY) {
     @Override
     public String apply(ASTNode pt, String prefix) {
-      // return mkString(recurseChildren(pt), prefix + "CLUSTER BY ", ", ", "\n");
-      return mkString(recurseChildren(pt), prefix + "CLUSTER BY ", ", ", " "); // uncomment for no new line
+      return mkString(recurseChildren(pt), prefix + "CLUSTER BY ", ", ", "\n");
     }
   };
 
@@ -904,23 +920,18 @@ public class ASTConverter {
       String newPrefix = prefix;
       switch (pt.getChild(0).getType()) {
       case HiveParser.KW_OR:
-        // newPrefix = "\n" + prefix + indent + " ";
-        newPrefix = prefix + indent + " "; // uncomment for no new line
+        newPrefix = "\n" + prefix + indent + " ";
       case HiveParser.KW_AND:
-        // newPrefix = "\n" + prefix + indent;
-        newPrefix = prefix + indent; // uncomment for no new line
+        newPrefix = "\n" + prefix + indent;
       }
-      // return mkString(recurseChildren(pt, newPrefix), prefix + "WHERE ", " ", "\n");
-      return mkString(recurseChildren(pt, newPrefix), prefix + "WHERE ", " ", " "); // uncomment for no new line
+      return mkString(recurseChildren(pt, newPrefix), prefix + "WHERE ", " ", "\n");
     }
   };
 
   SingleRule tok_HAVING = new SingleRule(HiveParser.TOK_HAVING) {
     @Override
     public String apply(ASTNode pt, String prefix) {
-      // return mkString(recurseChildren(pt, "\n" + prefix + indent), prefix + "HAVING ", " ", "\n");
-      return mkString(recurseChildren(pt, prefix + indent), prefix + "HAVING ", " ", " "); // uncomment for no new
-      // line
+      return mkString(recurseChildren(pt, "\n" + prefix + indent), prefix + "HAVING ", " ", "\n");
     }
   };
 
@@ -1022,21 +1033,21 @@ public class ASTConverter {
   SingleRule tok_RIGHTOUTERJOIN = new SingleRule(HiveParser.TOK_RIGHTOUTERJOIN) {
     @Override
     public String apply(ASTNode pt, String prefix) {
-      return formatJoin(prefix, pt, "RIGHT JOIN");
+      return formatJoin(prefix, pt, "RIGHT OUTER JOIN");
     }
   };
 
   SingleRule tok_LEFTOUTERJOIN = new SingleRule(HiveParser.TOK_LEFTOUTERJOIN) {
     @Override
     public String apply(ASTNode pt, String prefix) {
-      return formatJoin(prefix, pt, "LEFT JOIN");
+      return formatJoin(prefix, pt, "LEFT OUTER JOIN");
     }
   };
 
   SingleRule tok_FULLOUTERJOIN = new SingleRule(HiveParser.TOK_FULLOUTERJOIN) {
     @Override
     public String apply(ASTNode pt, String prefix) {
-      return formatJoin(prefix, pt, "FULL JOIN");
+      return formatJoin(prefix, pt, "FULL OUTER JOIN");
     }
   };
 
@@ -1050,14 +1061,14 @@ public class ASTConverter {
   SingleRule tok_UNIONDISTINCT = new SingleRule(HiveParser.TOK_UNIONDISTINCT) {
     @Override
     public String apply(ASTNode pt, String prefix) {
-      return formatUnion(prefix, pt, "UNION DISTINCT");
+      return formatUnion(prefix, pt, "UNION DISTINCT\n");
     }
   };
 
   SingleRule tok_UNIONALL = new SingleRule(HiveParser.TOK_UNIONALL) {
     @Override
     public String apply(ASTNode pt, String prefix) {
-      return formatUnion(prefix, pt, "UNION ALL");
+      return formatUnion(prefix, pt, "UNION ALL\n");
     }
   };
 
@@ -1275,8 +1286,7 @@ public class ASTConverter {
   SingleRule tok_LIMIT = new SingleRule(HiveParser.TOK_LIMIT) {
     @Override
     public String apply(ASTNode pt, String prefix) {
-      // return mkString(recurseChildren(pt), prefix + "LIMIT ", "", "\n");
-      return mkString(recurseChildren(pt), prefix + "LIMIT ", "", " "); // uncomment for no new line
+      return mkString(recurseChildren(pt), prefix + "LIMIT ", "", "\n");
     }
   };
 
@@ -1308,11 +1318,14 @@ public class ASTConverter {
         put(HiveParser.TOK_TABLEROWFORMAT, tok_TABLEROWFORMAT);
         put(HiveParser.TOK_TABLEROWFORMATFIELD, tok_TABLEROWFORMATFIELD);
         put(HiveParser.TOK_TABLEPROPERTIES, tok_TABLEPROPERTIES);
+        put(HiveParser.TOK_TABLEPROPLIST, tok_TABLEPROPLIST);
         put(HiveParser.TOK_TABLEPROPERTY, tok_TABLEPROPERTY);
         put(HiveParser.TOK_TABLESERIALIZER, tok_TABLESERIALIZER);
+        put(HiveParser.TOK_SERDENAME, tok_SERDENAME);
 
-        put(HiveParser.TOK_INSERT, tok_INSERT);
+        // put(HiveParser.TOK_INSERT, tok_INSERT);
         put(HiveParser.TOK_INSERT_INTO, tok_INSERT_INTO);
+        put(HiveParser.TOK_VALUE_ROW, tok_VALUE_ROW);
         put(HiveParser.TOK_DESTINATION, tok_DESTINATION);
         put(HiveParser.TOK_QUERY, tok_QUERY);
         put(HiveParser.TOK_SUBQUERY, tok_SUBQUERY);
@@ -1390,6 +1403,9 @@ public class ASTConverter {
     return children;
   }
 
+  /**
+   * drops a specified number of items from the front of the list
+   */
   static <T> List<T> dropLeft(List<T> list, int itemsToDrop) {
     if (list.size() <= itemsToDrop) {
       return Collections.emptyList();
@@ -1397,6 +1413,9 @@ public class ASTConverter {
     return list.subList(itemsToDrop, list.size());
   }
 
+  /**
+   * drops a specified number of items from the end of the list
+   */
   static <T> List<T> dropRight(List<T> list, int itemsToDrop) {
     if (list.size() <= itemsToDrop) {
       return Collections.emptyList();
@@ -1404,6 +1423,9 @@ public class ASTConverter {
     return list.subList(0, list.size() - itemsToDrop);
   }
 
+  /**
+   * starting at the front of the list it takes a specified number of children
+   */
   private List<ASTNode> take(List<ASTNode> list, int itemsToTake) {
     if (list.size() <= itemsToTake) {
       return list;

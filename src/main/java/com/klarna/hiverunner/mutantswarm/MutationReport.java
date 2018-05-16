@@ -13,8 +13,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MutationReport {
+
+  protected static final Logger LOGGER = LoggerFactory.getLogger(MutationReport.class);
+
   private final static File reportFile = new File("../hiverunner/target", "mutation-reports");
 
   private static List<String> originalScripts = new ArrayList<>();
@@ -23,10 +28,12 @@ public class MutationReport {
   private static List<List<Mutant>> mutants = new ArrayList<>();
   private static boolean addedAllMutants = false;
 
-  private static int popupsNeeded = 0;
-  private static int functionsNeeded = 0;
+  private static int popupNum = 0;
 
   private static BufferedWriter writer;
+
+  private static double totalMutants = 0;
+  private static double numMutantsKilled = 0;
 
   public static void generateMutantReport() {
     reportFile.mkdir();
@@ -36,29 +43,22 @@ public class MutationReport {
       setUpFile();
       writeContent();
       endFile();
+      generateMutationInfo();
     } catch (IOException e) {
       e.printStackTrace();
     }
   }
 
   public static void writeContent() {
-
     try {
       for (int i = 0; i < originalScripts.size(); i++) {
         writer.write("<h3><i>" + scriptNames.get(i) + "</i></h3>");
         writer.newLine();
         String script = originalScripts.get(i);
         script = normaliseQuery(script);
-        // might be best to not normalise out the '\n'
-        // just separate out all characters and do equals ignore case instead
-
         String[] words = script.split(" ");
-        // need to do a check here to see how this is gonna work with '\n' '\t' ' ' etc
-
         writer.write("<p>");
         writer.newLine();
-        // System.out.println("Script - " + scriptNames.get(i));
-
         List<Mutant> mutantList = mutants.get(i);
         for (String str : words) {
           if (str.equalsIgnoreCase("newline")) {
@@ -66,11 +66,8 @@ public class MutationReport {
           } else {
             List<Mutant> strMutations = new ArrayList<>();
             for (Mutant mutant : mutantList) {
-
-              if (str.equals(mutant.getOriginalText())) {
-                // maybe do equals ignore case ?
-                // depends if gonna normalise query to remove capitals
-
+              totalMutants++;
+              if (str.equalsIgnoreCase(mutant.getOriginalText())) {
                 strMutations.add(mutant);
               }
             }
@@ -94,23 +91,24 @@ public class MutationReport {
 
     } catch (IOException e) {
       e.printStackTrace();
-      // System.out.println("Couldnt write to file. " + e.getMessage());
+      LOGGER.warn("Error writing to file. " + e.getMessage());
     }
   }
 
+  /**
+   * Writes the string to the file and adds the popup with mutant list.
+   */
   private static String writeMutatedStatement(String str, List<Mutant> strMutations) {
     String survivors = "";
     String killed = "";
 
     boolean covered = true;
     for (Mutant mutant : strMutations) {
-      // need to separate them into lists
       if (mutant.hasSurvived()) {
         covered = false;
-        // survivors.add(mutant);
         survivors += mutant.getText() + ", ";
       } else {
-        // killed.add(mutant);
+        numMutantsKilled++;
         killed += mutant.getText() + ", ";
       }
     }
@@ -122,8 +120,7 @@ public class MutationReport {
     if (covered) {
       colour = "lightgreen";
     }
-    String functionName = "function" + popupsNeeded;
-    functionsNeeded++;
+    String functionName = "function" + popupNum;
     String statement = "<span class=\"popup\" style=\"background-color:"
         + colour
         + "\" onclick=\""
@@ -134,12 +131,15 @@ public class MutationReport {
         + popUpText
         + "</span>";
 
-    popupsNeeded++;
+    popupNum++;
     return statement;
   }
 
+  /**
+   * Generates popup text
+   */
   private static String indicateMutation(String survivors, String killed) {
-    String popUpText = "<span class=\"popuptext\" id=\"popup" + popupsNeeded + "\">";
+    String popUpText = "<span class=\"popuptext\" id=\"popup" + popupNum + "\">";
     if (survivors.equals("")) {
       popUpText += " Killed: " + killed + "</span>";
     } else if (killed.equals("")) {
@@ -150,8 +150,11 @@ public class MutationReport {
     return popUpText;
   }
 
+  /**
+   * Gives functionality to the popup
+   */
   private static void addFunctions() {
-    for (int i = 0; i < functionsNeeded; i++) {
+    for (int i = 0; i < popupNum; i++) {
       try {
         writer.write("function function" + i + "() {");
         writer.newLine();
@@ -164,10 +167,12 @@ public class MutationReport {
       } catch (IOException e) {
         e.printStackTrace();
       }
-
     }
   }
 
+  /**
+   * Adds opening tags and CSS link to the file
+   */
   private static void setUpFile() {
     try {
       writer.write("<!DOCTYPE HTML>");
@@ -181,8 +186,8 @@ public class MutationReport {
       File cssFile = new File("../hiverunner/target/mutation-reports", "mutationReportStyling.css");
       if (cssFile.exists()) {
         writer.write("<link type=\"text/css\" rel=\"stylesheet\" href=\"mutationReportStyling.css\"/>");
-        // } else {
-        // System.out.println("cant find css file");
+      } else {
+        LOGGER.warn("CSS file does not exist");
       }
 
       writer.write("<h1>Mutation Report</h1>");
@@ -190,16 +195,16 @@ public class MutationReport {
       writer.newLine();
       writer.write("<body>");
       writer.newLine();
-
-      // <div style="color:lightblue">some</div> // changes the colour of line
-      // <span style="background-color:yellow">some</span> // changes colour of what ever is contained within 'span'
       writer.newLine();
     } catch (IOException e) {
       e.printStackTrace();
-      System.out.println("Couldnt write to file. " + e.getMessage());
+      LOGGER.warn("Encountered a problem writing to file. " + e.getMessage());
     }
   }
 
+  /**
+   * Adds closing tags to the file
+   */
   private static void endFile() {
     try {
       writer.newLine();
@@ -208,12 +213,11 @@ public class MutationReport {
       writer.write("</html>");
     } catch (IOException e) {
       e.printStackTrace();
-      System.out.println("Couldnt write to file. " + e.getMessage());
+      LOGGER.warn("Encountered a problem writing to file. " + e.getMessage());
     }
   }
 
   private static String normaliseQuery(String query) {
-    // query = query.trim().toLowerCase();
     query = query.replaceAll("!=", "<>"); // equivalent operator
     query = query.replaceAll("\n", " newline "); // want to preserve newlines
     query = normaliseCharacters(query);
@@ -231,6 +235,25 @@ public class MutationReport {
     return query;
   }
 
+  private static void generateMutationInfo() {
+    int percentageKilled = (int) ((numMutantsKilled / totalMutants) * 100);
+    String border = "\n================================================================================";
+    String message = border
+        + "\nMutation Statistics"
+        + border
+        + "\nGenerated "
+        + (int) totalMutants
+        + " mutations. Killed "
+        + (int) numMutantsKilled
+        + ".\nSuccess Rate of "
+        + percentageKilled
+        + "%."
+        + border;
+
+    LOGGER.info(message);
+
+  }
+
   public static void setOriginalScripts(List<String> scripts) {
     if (scripts != null) {
       originalScripts = scripts;
@@ -240,13 +263,7 @@ public class MutationReport {
   public static void addMutants(List<Mutant> scriptMutations) {
     if (!addedAllMutants) {
       mutants.add(scriptMutations);
-      // } else {
-      // System.out.println("added all mutants");
     }
-    //
-    // for (List<Mutant> mutantlist : mutants) {
-    // System.out.println(mutantlist);
-    // }
   }
 
   public static void addScriptNames(List<Path> names) {
@@ -255,9 +272,8 @@ public class MutationReport {
     }
   }
 
-  public static void finishedAddingMutants(boolean bool) {
-    addedAllMutants = bool; // should only be set to true
-    // System.out.println("finished adding mutants");
+  public static void finishedAddingMutants() {
+    addedAllMutants = true; // prevents the mutants from being overwritten
   }
 
 }

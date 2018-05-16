@@ -25,40 +25,29 @@ public class MutantSwarmTest {
   @HiveSQL(files = { "mutantSwarmTest/select.hql", "mutantSwarmTest/select2.hql" })
   public HiveShell hiveShell;
 
-  private static int counter = 0;
+  // private static int counter = 0;
 
-  @After
-  public void after() {
-    counter++;
-  }
+  // @After
+  // public void after() {
+  // counter++;
+  // }
 
   @Test
-  public void test(){
-    System.out.println("RUNNING TEST BLOCK 1 - #" + counter);
+  public void test() {
+    // System.out.println("RUNNING TEST BLOCK 1 - #" + counter);
     List<String> result = hiveShell.executeQuery("SELECT * FROM bar");
-    System.out.println("Result: " + result);
+    // System.out.println("Result: " + result);
     List<String> expected = Arrays.asList("1\ttrue", "3\ttrue", "3\tfalse", "5\tfalse");
     assertEquals(expected, result);
   }
-  
+
   @Test
   public void test2() {
-    System.out.println("RUNNING TEST BLOCK 2 - #" + counter);
+    // System.out.println("RUNNING TEST BLOCK 2 - #" + counter);
     List<String> result = hiveShell.executeQuery("SELECT * FROM foobar");
-    System.out.println("Result: " + result);
+    // System.out.println("Result: " + result);
     List<String> expected = Arrays.asList("true", "false");
-//    assertEquals("Test: " + counter, expected, result);
     assertEquals(expected, result);
   }
-  
-//  @Test
-//  public void test2() {
-//    System.out.println("RUNNING TEST BLOCK 2 - #" + counter);
-//    final List<String> result = hiveShell.executeQuery("SELECT * FROM foobar");
-//    System.out.println("Result: " + result);
-//    List<String> expected = Arrays.asList("Green");
-////    assertEquals("Test: " + counter, expected, result);
-//    assertEquals(expected, result);
-//  }
 
 }

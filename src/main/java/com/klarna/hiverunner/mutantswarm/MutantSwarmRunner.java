@@ -10,10 +10,14 @@ import org.junit.runner.notification.RunNotifier;
 import org.junit.runner.notification.StoppedByUserException;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.Statement;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.klarna.hiverunner.StandaloneHiveRunner;
 
 public class MutantSwarmRunner extends StandaloneHiveRunner {
+
+  protected static final Logger LOGGER = LoggerFactory.getLogger(MutantSwarmRunner.class);
 
   public MutantSwarmRunner(Class<?> clazz) throws InitializationError {
     super(clazz);
@@ -34,7 +38,7 @@ public class MutantSwarmRunner extends StandaloneHiveRunner {
       testNotifier.addFailure(e);
     } finally {
       testNotifier.fireTestFinished();
-      System.out.println("Finished testing. Generating report.");
+      LOGGER.debug("Finished testing. Generating report.");
       MutationReport.addScriptNames(super.scriptsUnderTest);
       MutationReport.generateMutantReport();
     }
@@ -43,10 +47,19 @@ public class MutantSwarmRunner extends StandaloneHiveRunner {
   @Override
   protected List<TestRule> getTestRules(Object target) {
     List<TestRule> rules = new ArrayList<>(super.getTestRules(target));
-    HiveRunnerRule hiveRunnerRule = (HiveRunnerRule) rules.get(rules.size() - 4);
+    HiveRunnerRule hiveRunnerRule = getHiveRunnerRule(rules);
     rules.add(rules.size() - 1, new MutantSwarmRule(hiveRunnerRule));
-    // System.out.println("Rules: " + rules);
     return rules;
   }
-
+  
+  protected HiveRunnerRule getHiveRunnerRule(List<TestRule> rules){
+    HiveRunnerRule hrRule = null;
+    for (TestRule rule : rules){
+      if (rule instanceof HiveRunnerRule){
+        hrRule = (HiveRunnerRule) rule;
+      }
+    }
+    return hrRule;
+  }
+  
 }

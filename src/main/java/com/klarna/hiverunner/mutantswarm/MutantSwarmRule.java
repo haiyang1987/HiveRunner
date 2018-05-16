@@ -6,9 +6,13 @@ import java.util.List;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** A rule to run a standard HR test, and then once again for each mutant. */
 public class MutantSwarmRule implements TestRule {
+
+  protected static final Logger LOGGER = LoggerFactory.getLogger(MutantSwarmRule.class);
 
   private List<String> originalScripts = new ArrayList<>();
   private static List<List<Mutant>> scriptMutations = new ArrayList<>();
@@ -20,7 +24,7 @@ public class MutantSwarmRule implements TestRule {
 
   @Override
   public Statement apply(Statement base, Description description) {
-    System.out.println("mutant swarm apply method");
+    LOGGER.debug("mutant swarm apply method");
     return new MutantSwarmStatement(base);
   }
 
@@ -33,33 +37,32 @@ public class MutantSwarmRule implements TestRule {
 
     @Override
     public void evaluate() throws Throwable {
-      System.out.println("Running regular test");
+      LOGGER.debug("Running regular test");
       base.evaluate();
       originalScripts = hiveRunnerRule.getScriptsUnderTest();
       MutationReport.setOriginalScripts(originalScripts);
-      if (scriptMutations.isEmpty()){
-        System.out.println("generating mutants");
+      if (scriptMutations.isEmpty()) {
         generateMutants(originalScripts);
       }
 
-      System.out.println("Running mutant tests");
+      LOGGER.debug("Running mutant tests");
       for (int i = 0; i < scriptMutations.size(); i++) {
         List<Mutant> mutants = scriptMutations.get(i);
 
         for (Mutant mutant : mutants) {
-          System.out.println("Mutant: " + mutant.getMutatedScript());
+          LOGGER.debug("Mutant: " + mutant.getMutatedScript());
           hiveRunnerRule.setScriptsUnderTest(generateMutatedScriptList(mutant, i));
           try {
             base.evaluate();
-            System.out.println("mutant survived - bad");
+            LOGGER.debug("Mutant survived the test - bad");
           } catch (AssertionError e) {
-            System.out.println("mutant killed - " + e.getMessage());
+            LOGGER.debug("Mutant successfully killed by test - " + e.getMessage());
             mutant.setSurvived(false);
           }
         }
         MutationReport.addMutants(mutants);
       }
-      MutationReport.finishedAddingMutants(true);
+      MutationReport.finishedAddingMutants();
     }
   }
 
