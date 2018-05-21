@@ -52,10 +52,11 @@ public class MutationReport {
   public static void writeContent() {
     try {
       for (int i = 0; i < originalScripts.size(); i++) {
-        writer.write("<h3><i>" + scriptNames.get(i) + "</i></h3>");
+        writer.write("<h3>" + scriptNames.get(i) + "</h3>");
         writer.newLine();
         String script = originalScripts.get(i);
-        script = normaliseQuery(script);
+        script = normalise(script);
+
         String[] words = script.split(" ");
         writer.write("<p>");
         writer.newLine();
@@ -120,11 +121,16 @@ public class MutationReport {
     if (covered) {
       colour = "lightgreen";
     }
-    String functionName = "function" + popupNum;
+    String functionShow = "show" + popupNum;
+    String functionHide = "hide" + popupNum;
+
     String statement = "<span class=\"popup\" style=\"background-color:"
         + colour
-        + "\" onclick=\""
-        + functionName
+        + "\" onmouseover=\""
+        + functionShow
+        + "()\""
+        + " onmouseout=\""
+        + functionHide
         + "()\">"
         + str
         + " "
@@ -154,9 +160,14 @@ public class MutationReport {
    * Gives functionality to the popup
    */
   private static void addFunctions() {
+    writeFunctions("show");
+    writeFunctions("hide");
+  }
+
+  private static void writeFunctions(String name) {
     for (int i = 0; i < popupNum; i++) {
       try {
-        writer.write("function function" + i + "() {");
+        writer.write("function " + name + i + "() {");
         writer.newLine();
         writer.write("var popup = document.getElementById(\"popup" + i + "\");");
         writer.newLine();
@@ -217,7 +228,7 @@ public class MutationReport {
     }
   }
 
-  private static String normaliseQuery(String query) {
+  private static String normalise(String query) {
     query = query.replaceAll("!=", "<>"); // equivalent operator
     query = query.replaceAll("\n", " newline "); // want to preserve newlines
     query = normaliseCharacters(query);
@@ -272,6 +283,9 @@ public class MutationReport {
     }
   }
 
+  /*
+   * Called after each script is run with all mutations
+   */
   public static void finishedAddingMutants() {
     addedAllMutants = true; // prevents the mutants from being overwritten
   }

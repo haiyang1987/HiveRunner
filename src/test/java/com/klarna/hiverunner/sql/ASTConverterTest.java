@@ -740,7 +740,7 @@ public class ASTConverterTest {
     String actual = converter.treeToQuery(tree);
     assertEquals(normaliseQuery(expected), normaliseQuery(actual));
   }
-  
+
   @Test
   public void fullJoin() throws ParseException {
     String expected = "SELECT a.a, b.b FROM a FULL OUTER JOIN b ON (a.x = b.x)";
@@ -748,7 +748,7 @@ public class ASTConverterTest {
     String actual = converter.treeToQuery(tree);
     assertEquals(normaliseQuery(expected), normaliseQuery(actual));
   }
-  
+
   /*
    * INNER is an optional keywords - doesnt show up in the tree
    */
@@ -759,7 +759,7 @@ public class ASTConverterTest {
     String actual = converter.treeToQuery(tree);
     assertEquals(normaliseQuery(expected), normaliseQuery(actual));
   }
-  
+
   @Test
   public void leftSemiJoin() throws ParseException {
     String expected = "SELECT a.a, b.b FROM a LEFT SEMI JOIN b ON (a.x = b.x)";
@@ -767,7 +767,7 @@ public class ASTConverterTest {
     String actual = converter.treeToQuery(tree);
     assertEquals(normaliseQuery(expected), normaliseQuery(actual));
   }
-  
+
   @Test
   public void unionAll() throws ParseException {
     String expected = "SELECT a FROM b UNION ALL SELECT c FROM d";
@@ -776,4 +776,30 @@ public class ASTConverterTest {
     assertEquals(normaliseQuery(expected), normaliseQuery(actual));
   }
   
+  @Test
+  public void complexUnion() throws ParseException {
+    String expected = "SELECT key FROM (SELECT key FROM src ORDER BY key ASC LIMIT 10)subq1 "
+        + "UNION ALL "
+        + "SELECT key FROM (SELECT key FROM src1 ORDER BY key ASC LIMIT 10)subq2";
+    ASTNode tree = ParseUtils.parse(expected);
+    String actual = converter.treeToQuery(tree);
+    assertEquals(normaliseQuery(expected), normaliseQuery(actual));
+  }
+
+  @Test
+  public void createViewAs() throws ParseException {
+    String expected = "CREATE VIEW view1 AS SELECT a FROM b";
+    ASTNode tree = ParseUtils.parse(expected);
+    String actual = converter.treeToQuery(tree);
+    assertEquals(normaliseQuery(expected), normaliseQuery(actual));
+  }
+  
+  @Test
+  public void createViewIfNotExists() throws ParseException {
+    String expected = "CREATE VIEW IF NOT EXISTS view1 AS SELECT a FROM b";
+    ASTNode tree = ParseUtils.parse(expected);
+    String actual = converter.treeToQuery(tree);
+    assertEquals(normaliseQuery(expected), normaliseQuery(actual));
+  }
+
 }

@@ -3,11 +3,15 @@ package com.klarna.hiverunner.mutantswarm;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.hadoop.hive.ql.parse.ParseException;
+import org.apache.hadoop.hive.ql.parse.ParseUtils;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.klarna.hiverunner.sql.ASTConverter;
 
 /** A rule to run a standard HR test, and then once again for each mutant. */
 public class MutantSwarmRule implements TestRule {
@@ -41,8 +45,10 @@ public class MutantSwarmRule implements TestRule {
       base.evaluate();
       originalScripts = hiveRunnerRule.getScriptsUnderTest();
       MutationReport.setOriginalScripts(originalScripts);
+//      setUpOriginalScripts();
       if (scriptMutations.isEmpty()) {
         generateMutants(originalScripts);
+        // pass scripts and mutants
       }
 
       LOGGER.debug("Running mutant tests");
@@ -73,9 +79,11 @@ public class MutantSwarmRule implements TestRule {
   }
 
   private void generateMutants(List<String> underTest) {
+    int numScripts = 0;
     for (String script : underTest) {
-      Mutator mutator = new Mutator(script);
+      Mutator mutator = new Mutator(script, numScripts);
       scriptMutations.add(mutator.mutateScript());
+      numScripts++;
     }
   }
 

@@ -9,6 +9,7 @@ import java.util.regex.Pattern;
 import org.antlr.runtime.CommonToken;
 import org.antlr.runtime.Token;
 import org.antlr.runtime.tree.Tree;
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hive.ql.lib.Node;
 import org.apache.hadoop.hive.ql.parse.ASTNode;
 import org.apache.hadoop.hive.ql.parse.HiveParser;
@@ -25,13 +26,16 @@ public class Mutator {
   private final List<String> queriesToIgnore = Arrays.asList("set", "drop", "use", "grant");
   private ASTConverter converter;
 
-  private int statementIndex;
-  private List<String> statementList;
+  private int queryIndex;
+  private int scriptNumber;
+  
+  private List<String> queryList;
   StringBuilder scriptBuilder = new StringBuilder();
 
-  public Mutator(String script) {
+  public Mutator(String script, int scriptNumber) {
     mutantList = new ArrayList<>();
     this.script = script;
+    this.scriptNumber = scriptNumber;
     converter = new ASTConverter(false);
   }
 
@@ -45,9 +49,9 @@ public class Mutator {
   // return the list of mutants
 
   public List<Mutant> mutateScript() {
-    statementList = StatementsSplitter.splitStatementsRemoveComments(script);
-    for (statementIndex = 0; statementIndex < statementList.size(); statementIndex++) {
-      String statement = statementList.get(statementIndex);
+    queryList = StatementsSplitter.splitStatementsRemoveComments(script);
+    for (queryIndex = 0; queryIndex < queryList.size(); queryIndex++) {
+      String statement = queryList.get(queryIndex);
       if (canMutate(statement)) {
         statement = checkForVariableSubstitution(statement);
         mutateTreeNode(getAST(statement)); // mutate each statement in the script
@@ -92,9 +96,20 @@ public class Mutator {
   private void createMutant(String text, int token, ASTNode astToReplace, String oldNodeText) {
     String mutant = mutateTree(astToReplace, token, text);
     String mutatedScript = buildMutantScript(scriptBuilder.toString(), mutant,
-        statementList.subList(statementIndex + 1, statementList.size()));
+        queryList.subList(queryIndex + 1, queryList.size()));
 
-    mutantList.add(new Mutant(text, oldNodeText, mutatedScript, script));
+    // get the difference between the two strings
+    // then find the number of '\n' chars between 0 and this index to find the line number
+    // TEST THIS ********
+
+    int lineNumber = lineNumber(mutatedScript, StringUtils.indexOfDifference(script, mutatedScript));
+    mutantList.add(new Mutant(text, oldNodeText, mutatedScript, script, lineNumber, scriptNumber));
+  }
+
+  private int lineNumber(String script, int index) {
+    script = script.substring(0, index);
+    int lineNum = StringUtils.countMatches(script, "\n");
+    return 1 + lineNum;
   }
 
   private String buildMutantScript(String startOfScript, String mutant, List<String> restOfScript) {

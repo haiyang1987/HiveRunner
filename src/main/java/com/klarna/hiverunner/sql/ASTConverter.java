@@ -1,7 +1,6 @@
 package com.klarna.hiverunner.sql;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -184,7 +183,7 @@ public class ASTConverter {
     }
     return mkString(recTransform(dropLeft(children, 2)), recTransform(children.get(1)) + " IN (", ", ", ")");
   }
-
+  
   /**
    * <pre>
    * {@code
@@ -1071,6 +1070,29 @@ public class ASTConverter {
       return formatUnion(prefix, pt, "UNION ALL\n");
     }
   };
+  
+  SingleRule tok_CREATEVIEW = new SingleRule(HiveParser.TOK_CREATEVIEW) {
+    @Override
+    public String apply(ASTNode pt, String prefix) {
+      String keyword = "CREATE VIEW ";
+      List<ASTNode> children = getChildren(pt);
+      ASTNode viewName = children.get(0);
+      
+      List<ASTNode> tok_IfNotExists = getChildrenWithTypes(pt, HiveParser.TOK_IFNOTEXISTS);
+      List<ASTNode> tok_query = getChildrenWithTypes(pt, HiveParser.TOK_QUERY);
+      
+      List<ASTNode> nodes = new ArrayList<>();
+      
+      if (!tok_IfNotExists.isEmpty()){
+        keyword += recTransform(tok_IfNotExists.get(0)) + " ";
+      }
+      keyword += recTransform(viewName) + " ";
+      keyword += "AS\n";
+      nodes.addAll(tok_query);
+      
+      return mkString(recTransform(nodes, prefix), keyword, " ", "\n");
+    }
+  };
 
   SingleRule tok_LATERAL_VIEW = new SingleRule(HiveParser.TOK_LATERAL_VIEW) {
     @Override
@@ -1361,6 +1383,7 @@ public class ASTConverter {
         put(HiveParser.TOK_LEFTSEMIJOIN, tok_LEFTSEMIJOIN);
         put(HiveParser.TOK_UNIONDISTINCT, tok_UNIONDISTINCT);
         put(HiveParser.TOK_UNIONALL, tok_UNIONALL);
+        put(HiveParser.TOK_CREATEVIEW, tok_CREATEVIEW);
         put(HiveParser.TOK_LATERAL_VIEW, tok_LATERAL_VIEW);
         put(HiveParser.TOK_LATERAL_VIEW_OUTER, tok_LATERAL_VIEW_OUTER);
         put(HiveParser.Identifier, identifier);
