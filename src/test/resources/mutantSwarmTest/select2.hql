@@ -1,4 +1,4 @@
 CREATE TABLE foobar AS
 SELECT c
-from bar
-where b = 3;
+FROM bar
+WHERE b = 3;

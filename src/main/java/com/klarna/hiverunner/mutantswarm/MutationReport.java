@@ -23,10 +23,13 @@ public class MutationReport {
   private final static File reportFile = new File("../hiverunner/target", "mutation-reports");
 
   private static List<String> originalScripts = new ArrayList<>();
+  
+  private static List<Script> scripts = new ArrayList<>();
+  
   private static List<String> scriptNames = new ArrayList<>();
 
   private static List<List<Mutant>> mutants = new ArrayList<>();
-  private static boolean addedAllMutants = false;
+//  private static boolean addedAllMutants = false;
 
   private static int popupNum = 0;
 
@@ -37,16 +40,16 @@ public class MutationReport {
 
   public static void generateMutantReport() {
     reportFile.mkdir();
-    File htmlFile = new File(reportFile, (new SimpleDateFormat("yyyyMMdd-HH:mm")).format(new Date()) + ".html");
-    try (BufferedWriter bw = new BufferedWriter(new FileWriter(htmlFile))) {
-      writer = bw;
-      setUpFile();
-      writeContent();
-      endFile();
-      generateMutationInfo();
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
+//    File htmlFile = new File(reportFile, (new SimpleDateFormat("yyyyMMdd-HH:mm")).format(new Date()) + ".html");
+//    try (BufferedWriter bw = new BufferedWriter(new FileWriter(htmlFile))) {
+//      writer = bw;
+//      setUpFile();
+//      writeContent();
+//      endFile();
+//      generateMutationInfo();
+//    } catch (IOException e) {
+//      e.printStackTrace();
+//    }
   }
 
   public static void writeContent() {
@@ -265,29 +268,85 @@ public class MutationReport {
 
   }
 
-  public static void setOriginalScripts(List<String> scripts) {
-    if (scripts != null) {
-      originalScripts = scripts;
-    }
-  }
+//  public static void setOriginalScripts(List<String> scripts) {
+//    if (scripts != null) {
+//      originalScripts = scripts;
+//    }
+//  }
 
-  public static void addMutants(List<Mutant> scriptMutations) {
-    if (!addedAllMutants) {
-      mutants.add(scriptMutations);
-    }
-  }
+//  public static void addMutants(List<Mutant> scriptMutations) {
+//    if (!addedAllMutants) {
+//      mutants.add(scriptMutations);
+//    }
+//  }
 
   public static void addScriptNames(List<Path> names) {
-    for (Path script : names) {
-      scriptNames.add(script.getFileName().toString());
+    for (Path scriptName : names) {
+      String name = scriptName.getFileName().toString();
+      for (Script script: scripts){
+        script.setName(name);
+      }
     }
   }
 
   /*
    * Called after each script is run with all mutations
    */
-  public static void finishedAddingMutants() {
-    addedAllMutants = true; // prevents the mutants from being overwritten
+//  public static void finishedAddingMutants() {
+//    addedAllMutants = true; // prevents the mutants from being overwritten
+//  }
+
+  // *****************************
+
+  // parsed a script and its mutations
+  // create a script object
+  // split the script into lines
+  // - create a line object + add original text
+  // - split each line into words
+  // - - create a word object + add original text
+  // - - determine if the mutant matches the line number and original word text
+  // - - - set the word to mutated 
+  // - - - set the word status - equal to mutant status
+  // - - - add mutant to the line
+  // - - - add word to the line
+  // - add line to the script
+//  public static void setUpScript(String scriptString, List<Mutant> mutants){
+//    Script script = new Script();
+//    String[] scriptLines = scriptString.split("\n");
+//    for (int i = 0; i < scriptLines.length; i++){
+//      String lineString = scriptLines[i];
+//      int lineNum = i + 1;
+//      Line line = new Line(lineNum, lineString);
+//      System.out.println("line " + lineNum);
+//      
+//      String[] words = lineString.split(" ");
+//      for (String wordString : words){
+//        Word word = new Word(wordString);
+//        System.out.println("word is: " + word);
+//        
+//        for (Mutant mutant : mutants){
+//          if (mutant.getLineNumber() == lineNum && mutant.getOriginalText() == wordString){
+//            word.setMutated(true);
+//            System.out.println("found mutation: " + mutant.getText());
+//            if (mutant.hasSurvived()){
+//              word.wasKilled(false);
+//              System.out.println("mutation survived.");
+//            }
+//            line.addMutant(mutant); // mutation for this line
+//          }
+//        }
+//        line.addWord(word);
+//      }
+//      script.addLine(line);
+//    }
+//    scripts.add(script);
+//  }
+  
+  public static void addScript(Script script){
+    scripts.add(script);
+    System.out.println("Mutation Report: got script " + script.getName());
   }
+  
+  // *****************************
 
 }

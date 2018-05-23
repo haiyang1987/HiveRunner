@@ -387,7 +387,7 @@ public class ASTConverter {
   SingleRule tok_LIKETABLE = new SingleRule(HiveParser.TOK_LIKETABLE) {
     @Override
     public String apply(ASTNode pt, String prefix) {
-      return "AS";
+      return "AS\n";
     }
   };
 

@@ -3,20 +3,19 @@ package com.klarna.hiverunner.mutantswarm;
 public class Mutant {
 
   private String text;
-  private String originalText;
+//  private String originalText;
   private String mutatedScript;
-  private String originalScript;
   private boolean survived = true;
   private int lineNumber;
-  private int scriptNumber;
+//  private int scriptNumber;
+  private Word word;
 
-  Mutant(String text, String originalText, String mutatedScript, String script, int lineNumber, int scriptNumber) {
+  Mutant(String text, String mutatedScript, int lineNumber, Word word) {
     this.text = text;
-    this.originalText = originalText;
     this.mutatedScript = mutatedScript;
-    this.originalScript = script;
     this.lineNumber = lineNumber;
-    this.scriptNumber = scriptNumber;
+    this.word = word;
+    word.setSurvived();
   }
 
   public String getText() {
@@ -24,19 +23,16 @@ public class Mutant {
   }
 
   public String getOriginalText() {
-    return originalText;
+    return word.getText();
   }
 
   public String getMutatedScript() {
     return mutatedScript;
   }
-
-//  public String getOriginalScript() {
-//    return originalScript;
-//  }
-
-  public void setSurvived(boolean survived) {
-    this.survived = survived;
+  
+  public void setKilled(){
+    this.survived = false;
+    word.setKilled();
   }
 
   public boolean hasSurvived() {
@@ -49,9 +45,6 @@ public class Mutant {
 
   public int getLineNumber() {
     return lineNumber;
-  }
-  public int getScriptNumber() {
-    return scriptNumber;
   }
   
 }
