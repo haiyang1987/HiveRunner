@@ -3,15 +3,11 @@ package com.klarna.hiverunner.mutantswarm;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.hadoop.hive.ql.parse.ParseException;
-import org.apache.hadoop.hive.ql.parse.ParseUtils;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.klarna.hiverunner.sql.ASTConverter;
 
 /** A rule to run a standard HR test, and then once again for each mutant. */
 public class MutantSwarmRule implements TestRule {

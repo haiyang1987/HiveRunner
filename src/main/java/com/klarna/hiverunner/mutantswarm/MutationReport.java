@@ -20,7 +20,7 @@ public class MutationReport {
 
   protected static final Logger LOGGER = LoggerFactory.getLogger(MutationReport.class);
 
-  private final static File reportFile = new File("../hiverunner/target", "mutation-reports");
+  private final static File reportFile = new File("../hiverunner/target", "mutant-swarm-reports");
 
   private static List<String> originalScripts = new ArrayList<>();
   private static List<String> scriptNames = new ArrayList<>();
@@ -194,9 +194,9 @@ public class MutationReport {
       writer.newLine();
       writer.write("<title>Mutation Report</title>");
 
-      File cssFile = new File("../hiverunner/target/mutation-reports", "mutationReportStyling.css");
+      File cssFile = new File("../HiveRunner/css", "mutationReportStyling.css");
       if (cssFile.exists()) {
-        writer.write("<link type=\"text/css\" rel=\"stylesheet\" href=\"mutationReportStyling.css\"/>");
+        writer.write("<link rel=\"stylesheet\" href=\"../../css/mutationReportStyling.css\"/>");
       } else {
         LOGGER.warn("CSS file does not exist");
       }
